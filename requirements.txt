@@ -1,0 +1,10 @@
+pandas
+plotly
+numpy
+scikit-learn
+tensorflow
+pyspark==4.0.0
+delta-spark==3.3.1
+databricks-sdk
+minio
+pyngrok

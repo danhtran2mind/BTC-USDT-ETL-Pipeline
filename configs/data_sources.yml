@@ -1,0 +1,2 @@
+- name: BTCUSDT-1s
+  url: https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1s/

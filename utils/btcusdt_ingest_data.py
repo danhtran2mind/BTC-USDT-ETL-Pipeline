@@ -1,0 +1,73 @@
+import requests
+import zipfile
+import io
+import yaml
+from datetime import datetime
+from pathlib import Path
+from typing import Optional
+
+def download_and_extract_binance_data(url: str, output_path: str = "temp/input.csv") -> None:
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()  # Raise an exception for non-200 status codes
+
+        with io.BytesIO(response.content) as zip_file:
+            with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+                csv_file_name = zip_ref.namelist()[0]
+                with open(output_path, 'wb') as output_file:
+                    output_file.write(zip_ref.read(csv_file_name))
+        print(f"Successfully downloaded and extracted data to {output_path}")
+
+    except requests.RequestException as e:
+        raise Exception(f"Failed to download file from {url}: {e}")
+    except zipfile.BadZipFile as e:
+        raise Exception(f"Invalid ZIP file: {e}")
+    except IOError as e:
+        raise Exception(f"Failed to write to {output_path}: {e}")
+def crawl_data_from_sources():
+    try:
+        # Get current year and month
+        current_date = datetime.now()
+        year = current_date.year
+        month = current_date.month
+
+        # Validate year and month
+        if not (1 <= month <= 12):
+            raise ValueError(f"Invalid month: {month}. Must be between 1 and 12.")
+        if year < 2000 or year > current_date.year:
+            raise ValueError(f"Invalid year: {year}. Must be between 2000 and {current_date.year}.")
+
+        # Load configuration
+        config_path = Path("configs/data_sources.yml")
+        with open(config_path, 'r') as file:
+            data_sources = yaml.safe_load(file)
+            if not data_sources or not isinstance(data_sources, list):
+                raise ValueError("Invalid or empty configuration file")
+
+        # Process each data source
+        year_month = f"{year:04d}-{month:02d}"
+        for data_source in data_sources:
+            try:
+                if not isinstance(data_source, dict) or 'name' not in data_source or 'url' not in data_source:
+                    print(f"Skipping invalid data source: {data_source}")
+                    continue
+
+                # Construct unique output path based on data source name
+                output_path = f"temp/{data_source['name']}-{year_month}.csv"
+                # Construct URL
+                url = f"{data_source['url']}{data_source['name']}-{year_month}.zip"
+
+                # Download and extract data
+                download_and_extract_binance_data(url, output_path)
+
+            except Exception as e:
+                print(f"Failed to process data source {data_source.get('name', 'unknown')}: {e}")
+                continue  # Continue with the next data source on error
+
+    except (yaml.YAMLError, FileNotFoundError) as e:
+        raise Exception(f"Failed to load configuration: {e}")
+    except Exception as e:
+        raise Exception(f"Script execution failed: {e}")
+    
+if __name__ == "__main__":
+    crawl_data_from_sources()
