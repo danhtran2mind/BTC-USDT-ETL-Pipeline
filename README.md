@@ -6,6 +6,13 @@ A modern data engineering pipeline for BTC-USDT, leveraging Apache Airflow, MinI
 
 This project extracts, transforms, and loads BTC-USDT trading data using scalable, cloud-native frameworks.
 
+## Key Features
+
+- Configure DAGs for BTC-USDT ETL in Airflow.
+- Store raw/processed data in MinIO.
+- Use Spark for transformation and analytics.
+
+
 ## Architecture
 
 - **MinIO**: Object storage for raw and processed data.
@@ -92,12 +99,6 @@ Run below code to start `Airflow` to control pipelines:
 airflow webserver --port <your_airflow_port>
 ```
 Then you access `localhost:<your_airflow_port>` to start workflows.
-
-## Keys Feature
-
-- Configure DAGs for BTC-USDT ETL in Airflow.
-- Store raw/processed data in MinIO.
-- Use Spark for transformation and analytics.
 
 ## License
 
