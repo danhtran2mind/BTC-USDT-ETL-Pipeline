@@ -1,18 +1,17 @@
+# airflow/dags/data_pipeline.py
 from airflow import DAG
-from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
 import os
-from dotenv import load_dotenv
-from utils import process_data
-from utils.duckdb import push_to_duckdb
-from minio_api.client import sign_in, upload_file, download_file, create_bucket, list_objects
-from utils.process_data import process_financial_data
-from utils.btcusdt_ingest_data import crawl_data_from_sources
-load_dotenv()
+import sys
 
-# databricks_host = os.getenv("DATABRICKS_HOST")
-# databricks_token = os.getenv("DATABRICKS_TOKEN")
+# Add the project root directory to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+from scripts.duckdb_api import push_to_duckdb
+from scripts.process_data import process_financial_data
+from scripts.btcusdt_ingest_data import crawl_data_from_sources
+from scripts.datalake_cr import up_to_datalake
 
 default_args = {
     'owner': 'airflow',
@@ -29,82 +28,48 @@ dag_1 = DAG(
 dag_2 = DAG(
     'etl_pipeline',
     default_args=default_args,
-    schedule_interval='@daily',
+    # schedule_interval='@daily',
     catchup=False
 )
 
-def up_to_data_lake(client_file, server_file, bucket_name="minio-ngrok-bucket"):
-    """Upload the local CSV file to MinIO."""
-    # Check if local file exists
-    if not os.path.exists(client_file):
-        raise FileNotFoundError(f"Local file {client_file} does not exist")
-    
-    minio_client = sign_in()
-    # Create bucket
-    create_bucket(minio_client, bucket_name)
-
-    # Upload file
-    upload_file(minio_client, bucket_name, client_file, server_file)
-
-# Download Binance BTCUSDT 1s kline CSV and unzip
 download_binance_csv = PythonOperator(
     dag=dag_1,
     task_id='download_binance_csv',
     python_callable=crawl_data_from_sources,
 )
 
-# Move ingested data and other files to HDFS
 upload_to_datalake = PythonOperator(
     dag=dag_1,
     task_id='upload_to_datalake',
-    python_callable=up_to_data_lake,
+    python_callable=up_to_datalake,
     op_kwargs={
         'client_file': 'temp/BTCUSDT-1s-2025-09.csv', 
         'server_file': 'BTCUSDT-1s-2025-09.csv',
         'bucket_name': 'minio-ngrok-bucket'
-
     }
 )
-
-# Spark job to process data
-# extract_and_transform_data = BashOperator(
-#     dag=dag_2,
-#     task_id='extract_and_transform_data',
-#     bash_command='spark-submit spark/process_data.py /data/raw/input.csv /data/processed/output.csv'
-# )
-
 
 extract_and_transform_data = PythonOperator(
     dag=dag_2,
     task_id='extract_and_transform_data',
-    bash_command=process_financial_data
+    python_callable=process_financial_data,
+    op_kwargs={
+        'bucket_name': 'minio-ngrok-bucket',
+        'file_name': 'BTCUSDT-1s-2025-09.csv',
+        'temp_parquet_path': 'temp/temp_parquet_chunks',
+        'output_parquet_path': 'temp/aggregated_output'
+    }
 )
 
-# Export processed data to DuckDB
-# export_duckdb = BashOperator(
-#     task_id='export_duckdb',
-#     bash_command='duckdb /tmp/export.duckdb "COPY (SELECT * FROM read_csv_auto(\'/data/processed/output.csv\')) TO \'/tmp/output.duckdb\' (FORMAT PARQUET);"'
-# )
-
-# Task to push to DuckDB
 push_to_warehouse = PythonOperator(
     task_id='export_duckdb',
     python_callable=push_to_duckdb,
     op_kwargs={
         'duckdb_path': 'duckdb_databases/financial_data.db',
-        'aggregated_df': '{{ ti.xcom_pull(task_ids="transform_data") }}'
+        'parquet_path': '{{ ti.xcom_pull(task_ids="extract_and_transform_data") }}'
     },
     dag=dag_2
 )
-
-# (Optional) Move DuckDB file to Google Locker
-# move_to_google_locker = BashOperator(
-#     dag=dag,
-#     task_id='move_to_google_locker',
-#     bash_command='gsutil cp /tmp/output.duckdb gs://my-locker/output.duckdb'
-# )
-
-# download_binance_csv >> ingest_json_task >> move_to_hdfs >> process_data >> export_duckdb >> move_to_google_locker
 
 download_binance_csv >> upload_to_datalake
 extract_and_transform_data >> push_to_warehouse
