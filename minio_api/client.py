@@ -23,7 +23,7 @@ def sign_in():
             endpoint=minio_host,
             access_key=minio_root_user,
             secret_key=minio_root_password,
-            secure=True  # Set to False if not using HTTPS
+            secure=False  # Set to False if not using HTTPS
         )
         print("Successfully connected to MinIO server")
         return minio_client
@@ -83,9 +83,9 @@ def list_objects(minio_client, bucket_name):
 if __name__ == "__main__":
     # Configuration
     bucket_name = "minio-ngrok-bucket"
-    client_file = "/content/sample_data/mnist_test.csv"
-    server_file = "mnist_test.csv"
-    download_path = "/content/sample_data/downloaded_mnist_test.csv"
+    client_file = "/content/sample_data/california_housing_test.csv"
+    server_file = "california_housing_test.csv"
+    download_path = "/content/sample_data/donload_california_housing_test.csv"
 
     # Initialize MinIO client
     try:
@@ -93,15 +93,15 @@ if __name__ == "__main__":
 
         # Create bucket
         create_bucket(minio_client, bucket_name)
-
+        print("Bucket creation checked/attempted.")
         # Upload file
         upload_file(minio_client, bucket_name, client_file, server_file)
-
+        print("File upload attempted.")
         # List objects in bucket
         list_objects(minio_client, bucket_name)
-
+        print("Listed objects in bucket.")
         # Download file
         download_file(minio_client, bucket_name, server_file, download_path)
-
+        print("File download attempted.")
     except Exception as e:
         print(f"An error occurred: {e}")

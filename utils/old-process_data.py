@@ -1,4 +1,4 @@
-from minio import Minio
+from utils.minio_utils import Minio
 from io import BytesIO
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, LongType, DoubleType, IntegerType
@@ -7,12 +7,12 @@ import os
 import shutil
 
 from minio_api.client import sign_in  # Import the sign_in function from minio/client.py
-from utils.minio import get_minio_csv  # Import the get_ninio_csv function from utils/minio.py
+from utils.minio_utils import get_minio_csv  # Import the get_ninio_csv function from utils/minio.py
 
 from pyspark.sql.functions import col, from_unixtime, window, first, max, min, last, sum
 from pyspark.sql.types import TimestampType
 from pyspark.sql.window import Window
-import duckdb
+import utils.duckdb_api as duckdb_api
 #=========================MinIO Part=========================
 # Get MinIO client using sign_in function
 minio_client = sign_in()

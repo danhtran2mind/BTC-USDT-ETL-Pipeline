@@ -3,16 +3,16 @@ from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
 import os
-from dotenv import load_dotenv
+import sys
+
+# Add the project root directory to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
 from utils import process_data
-from utils.duckdb import push_to_duckdb
-from minio_api.client import sign_in, upload_file, download_file, create_bucket, list_objects
+from utils.duckdb_api import push_to_duckdb
 from utils.process_data import process_financial_data
 from utils.btcusdt_ingest_data import crawl_data_from_sources
-load_dotenv()
-
-# databricks_host = os.getenv("DATABRICKS_HOST")
-# databricks_token = os.getenv("DATABRICKS_TOKEN")
+from utils.datalake_cr import up_to_datalake
 
 default_args = {
     'owner': 'airflow',
@@ -33,19 +33,6 @@ dag_2 = DAG(
     catchup=False
 )
 
-def up_to_data_lake(client_file, server_file, bucket_name="minio-ngrok-bucket"):
-    """Upload the local CSV file to MinIO."""
-    # Check if local file exists
-    if not os.path.exists(client_file):
-        raise FileNotFoundError(f"Local file {client_file} does not exist")
-    
-    minio_client = sign_in()
-    # Create bucket
-    create_bucket(minio_client, bucket_name)
-
-    # Upload file
-    upload_file(minio_client, bucket_name, client_file, server_file)
-
 # Download Binance BTCUSDT 1s kline CSV and unzip
 download_binance_csv = PythonOperator(
     dag=dag_1,
@@ -57,7 +44,7 @@ download_binance_csv = PythonOperator(
 upload_to_datalake = PythonOperator(
     dag=dag_1,
     task_id='upload_to_datalake',
-    python_callable=up_to_data_lake,
+    python_callable=up_to_datalake,
     op_kwargs={
         'client_file': 'temp/BTCUSDT-1s-2025-09.csv', 
         'server_file': 'BTCUSDT-1s-2025-09.csv',
@@ -77,7 +64,7 @@ upload_to_datalake = PythonOperator(
 extract_and_transform_data = PythonOperator(
     dag=dag_2,
     task_id='extract_and_transform_data',
-    bash_command=process_financial_data
+    python_callable=process_financial_data
 )
 
 # Export processed data to DuckDB

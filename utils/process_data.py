@@ -1,23 +1,26 @@
-from minio import Minio
-from io import BytesIO
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, LongType, DoubleType, IntegerType
 from pyspark.sql.functions import col, row_number, floor, first, max, min, last, sum
 from pyspark.sql.window import Window
 import os
+import sys
 import shutil
+from minio_utils import get_minio_data
 
+# Add the project root directory to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from minio_api.client import sign_in
-from utils.minio import get_minio_data
 
-def initialize_spark_session(app_name="MinIO to Spark DataFrame", driver_memory="4g", executor_memory="4g"):
+def initialize_spark_session(app_name="MinIO to Spark DataFrame", 
+                             driver_memory="4g", executor_memory="4g"):
     return SparkSession.builder \
         .appName(app_name) \
         .config("spark.driver.memory", driver_memory) \
         .config("spark.executor.memory", executor_memory) \
         .getOrCreate()
 
-def create_dataframe_from_csv(spark, csv_lines, temp_parquet_path="temp/temp_parquet_chunks", chunk_size=100000):
+def create_dataframe_from_csv(spark, csv_lines, temp_parquet_path="temp/temp_parquet_chunks", 
+                              chunk_size=int(3e+6)):
     """
     Convert CSV lines to a Spark DataFrame using a defined schema and write to temporary Parquet.
     
@@ -30,6 +33,7 @@ def create_dataframe_from_csv(spark, csv_lines, temp_parquet_path="temp/temp_par
     Returns:
         DataFrame: Spark DataFrame created from CSV data
     """
+    os.makedirs(temp_parquet_path, exist_ok=True)
     # Define schema
     schema = StructType([
         StructField("Open time", LongType(), True),
@@ -59,7 +63,7 @@ def create_dataframe_from_csv(spark, csv_lines, temp_parquet_path="temp/temp_par
     # Process data in chunks
     for i in range(0, len(data_lines), chunk_size):
         chunk = data_lines[i:i + chunk_size]
-        rdd_chunk = spark.sparkContext.parallelize(chunk)
+        rdd_chunk = spark.sparkContext.parallelize(chunk).repartition(8)  # Added repartition
         df_chunk = spark.read.schema(schema).csv(rdd_chunk, header=False)
         df_chunk.write.mode("append").parquet(temp_parquet_path)
 
@@ -101,7 +105,8 @@ def resample_dataframe(df, track_each=3600):
     aggregated_df = df.groupBy("group_id").agg(*aggregations)
     return aggregated_df.select("Open time", "Open", "High", "Low", "Close", "Number of trades")
 
-def process_financial_data(bucket_name="minio-ngrok-bucket", file_name="input.csv", temp_parquet_path="temp/temp_parquet_chunks"):
+def process_financial_data(bucket_name="minio-ngrok-bucket", file_name="input.csv", 
+                           temp_parquet_path="temp/temp_parquet_chunks"):
     """
     Main function to process financial data from MinIO and return aggregated DataFrame.
     
@@ -111,27 +116,26 @@ def process_financial_data(bucket_name="minio-ngrok-bucket", file_name="input.cs
         temp_parquet_path (str): Path for temporary Parquet files
     
     Returns:
-        DataFrame: Aggregated Spark DataFrame
+        tuple: (SparkSession, DataFrame) - Spark session and aggregated Spark DataFrame
     """
     # Initialize components
     minio_client = sign_in()
     spark = initialize_spark_session()
     
+    file_name = "BTCUSDT-1s-2025-09.csv"
+
     try:
         # Fetch and process data
         csv_lines = get_minio_data(minio_client, bucket_name, file_name)
+        print("Fetched CSV data from MinIO.")
         df = create_dataframe_from_csv(spark, csv_lines, temp_parquet_path)
+        print("Created Spark DataFrame from CSV data.")
         aggregated_df = resample_dataframe(df)
+        print("Resampled DataFrame with OHLC aggregations.")
         
-        return aggregated_df
+        return spark, aggregated_df  # Return both spark session and DataFrame
     
-    finally:
-        # Clean up
-        if os.path.exists(temp_parquet_path):
-            shutil.rmtree(temp_parquet_path)
-        spark.stop()
-
-if __name__ == "__main__":
-    # Execute the main processing function and display the result
-    aggregated_df = process_financial_data()
-    aggregated_df.show()
+    except Exception as e:
+        print(f"Error in process_financial_data: {e}")
+        spark.stop()  # Stop Spark session only on error
+        raise

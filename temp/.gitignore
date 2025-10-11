@@ -1,0 +1,4 @@
+# Ignore all files and folders in the current directory
+*
+# Allow the .gitignore file itself
+!.gitignore

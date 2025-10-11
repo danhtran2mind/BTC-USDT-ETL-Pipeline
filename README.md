@@ -65,3 +65,22 @@ python minio_api/server.py
 ```
 
 ## Client
+
+
+## Notes
+
+## Download and Run Airflow
+!pip install "apache-airflow[async,celery,postgres,cncf.kubernetes]" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.9.3/constraints-3.12.txt" -q
+
+### Download and Run MinIO Server
+
+### Download and Setup Spark
+
+!wget https://downloads.apache.org/spark/spark-3.5.6/spark-3.5.6-bin-hadoop3.tgz
+!tar -xzf spark-3.5.6-bin-hadoop3.tgz
+!sudo mv spark-3.5.6-bin-hadoop3 /opt/spark
+!sudo ln -s /opt/spark /opt/spark-latest  # Optional symlink for version management
+
+!export SPARK_HOME=/opt/spark
+!export PATH=$SPARK_HOME/bin:$SPARK_HOME/sbin:$PATH
+!export PYSPARK_PYTHON=python3
