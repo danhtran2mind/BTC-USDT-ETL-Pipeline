@@ -1,23 +1,23 @@
+
 # BTC-USDT ETL Pipeline
 
-A modern data engineering pipeline for BTC-USDT, leveraging Apache Airflow, MinIO, and Apache Spark.
+A modern data engineering pipeline for extracting, transforming, and loading BTC-USDT trading data using Apache Airflow, MinIO, and Apache Spark.
 
 ## Overview
 
-This project extracts, transforms, and loads BTC-USDT trading data using scalable, cloud-native frameworks.
+This project builds a scalable, cloud-native pipeline to process BTC-USDT trading data, leveraging industry-standard tools for orchestration, storage, and distributed processing.
 
 ## Key Features
 
-- Configure DAGs for BTC-USDT ETL in Airflow.
-- Store raw/processed data in MinIO.
-- Use Spark for transformation and analytics.
-
+- **Workflow Orchestration**: Configurable Directed Acyclic Graphs (DAGs) in Apache Airflow for BTC-USDT ETL processes.
+- **Data Storage**: MinIO for storing raw and processed data.
+- **Data Processing**: Apache Spark for efficient transformation and analytics.
 
 ## Architecture
 
 - **MinIO**: Object storage for raw and processed data.
-- **Apache Spark**: Distributed data processing.
-- **Apache Airflow**: Workflow orchestration.
+- **Apache Spark**: Distributed data processing for large-scale transformations.
+- **Apache Airflow**: Workflow orchestration for scheduling and managing ETL pipelines.
 
 ## Technologies
 
@@ -26,29 +26,68 @@ This project extracts, transforms, and loads BTC-USDT trading data using scalabl
 - Apache Spark
 - MinIO
 
-## Quickstart
+## Prerequisites
 
-### 1. MinIO Setup
+- Python 3.12+
+- Git
+- Bash-compatible shell
+- Internet access for downloading dependencies
 
-#### Install & Run MinIO
-You can easy download and run **MinIO** server with below code
+## Quickstart Guide
+
+Follow these steps to set up and run the BTC-USDT ETL pipeline.
+
+### 1. Clone the Repository
+
 ```bash
-python installations/install_mino.py\
-      --address-port <address_port>\
-      --web-port <web_port>
+git clone https://github.com/danhtran2mind/BTC-USDT-ETL-Pipeline.git
+cd BTC-USDT-ETL-Pipeline
+```
+
+### 2. Install Dependencies
+
+Install required Python packages:
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Set Up MinIO
+
+#### Install MinIO
+
+Run the provided script to download and install MinIO:
+
+```bash
+python installations/install_minio.py
 ```
 
 #### Start MinIO Server
 
-```python
-# start_minio.py
-import os, subprocess
-os.environ['MINIO_ROOT_USER'] = 'username'
-os.environ['MINIO_ROOT_PASSWORD'] = 'username_password'
-subprocess.run('./minio server ~/minio-data --address ":9123" --console-address ":9124" &', shell=True, check=True)
+Set environment variables and start the MinIO server:
+
+```bash
+export MINIO_ROOT_USER=<your_username>
+export MINIO_ROOT_PASSWORD=<your_password>
+./minio server ~/minio-data --address :9192 --console-address :9193 > logs/minio_server.log 2>&1 &
 ```
 
-### 2. Spark Setup
+#### Configure MinIO Secrets
+
+Create a `minio.env` file in the project root with the following content:
+
+```bash
+MINIO_ROOT_USER=<your_username>
+MINIO_ROOT_PASSWORD=<your_password>
+MINIO_HOST=localhost:9192
+MINIO_BROWSER=localhost:9193
+```
+
+Replace `<your_username>` and `<your_password>` with your chosen credentials.
+
+### 4. Set Up Apache Spark
+
+Download and configure Spark:
 
 ```bash
 wget https://downloads.apache.org/spark/spark-3.5.6/spark-3.5.6-bin-hadoop3.tgz
@@ -59,47 +98,77 @@ export PATH=$SPARK_HOME/bin:$SPARK_HOME/sbin:$PATH
 export PYSPARK_PYTHON=python3
 ```
 
-### 3. Airflow Setup
+Add the `export` commands to your shell configuration file (e.g., `~/.bashrc` or `~/.zshrc`) to persist them.
+
+### 5. Set Up Apache Airflow
+
+#### Install Airflow
+
+Install Airflow with required dependencies:
 
 ```bash
 pip install "apache-airflow[async,celery,postgres,cncf.kubernetes]" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.9.3/constraints-3.12.txt"
 ```
 
-#### Initialize Airflow
+#### Configure Airflow Home
 
-```python
-import os
-os.environ['AIRFLOW_HOME'] = f"{os.getcwd()}/airflow"
+Set the Airflow home directory:
+
+```bash
+export AIRFLOW_HOME=$(pwd)/airflow
 ```
+
+Add this to your shell configuration file for persistence.
+
+#### Initialize Airflow Database
+
 ```bash
 airflow db init
+```
+
+#### Create an Admin User
+
+```bash
+airflow users create \
+  --username admin \
+  --firstname Admin \
+  --lastname User \
+  --role Admin \
+  --email admin@example.com \
+  --password admin
+```
+
+#### Start Airflow Scheduler
+
+Run the scheduler in the background:
+
+```bash
 nohup airflow scheduler > airflow/scheduler.log 2>&1 &
-airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin
 ```
 
-### 4. Install Dependencies
+#### Start Airflow Webserver
+
+Run the webserver (default port: 8081):
 
 ```bash
-pip install -r requirements.txt
-```
-### 5. Setup `Secret`
-
-Create `minio.env` with below content, note that the `MINIO_HOST` and `MINIO_BORWSER` refer to `address_port` and `web_port` at [MinIO Installation](#install--run-minio):
-```markdown
-MINIO_ROOT_USER=<minio_username>
-MINIO_ROOT_PASSWORD=<username_password>
-MINIO_HOST=<minio_host_server>
-MINIO_BORWSER=<minio_host_web>
+airflow webserver --port 8081 > logs/airflow.log 2>&1 &
 ```
 
-### 6. Start Airflow
+### 6. Access Airflow
 
-Run below code to start `Airflow` to control pipelines:
-```bash
-airflow webserver --port <your_airflow_port>
-```
-Then you access `localhost:<your_airflow_port>` to start workflows.
+Open your browser and navigate to `http://localhost:8081`. Log in with the credentials:
+- Username: `admin`
+- Password: `admin`
+
+From the Airflow UI, you can trigger and monitor the BTC-USDT ETL workflows.
+
+## Troubleshooting
+
+- **MinIO not starting**: Ensure the ports `9192` and `9193` are not in use. Check `logs/minio_server.log` for errors.
+- **Airflow UI inaccessible**: Verify the webserver is running and the port is open. Check `logs/airflow.log` for details.
+- **Spark errors**: Confirm `SPARK_HOME` and `PYSPARK_PYTHON` are set correctly.
 
 ## License
 
 MIT
+
