@@ -51,7 +51,7 @@ pip install -r requirements.txt
 Run the provided script to download and install MinIO:
 
 ```bash
-python installations\install_mino.py
+python scripts/install_mino.py
 ```
 
 
@@ -82,43 +82,30 @@ MINIO_ROOT_USER=$MINIO_ROOT_USER MINIO_ROOT_PASSWORD=$MINIO_ROOT_PASSWORD \
 ```
 
 ### 4. Set Up Apache Spark
-
-Download and configure Spark:
-
+- Fast Setup:
 ```bash
-wget https://downloads.apache.org/spark/spark-3.5.6/spark-3.5.6-bin-hadoop3.tgz
-tar -xzf spark-3.5.6-bin-hadoop3.tgz
-sudo mv spark-3.5.6-bin-hadoop3 /opt/spark
-export SPARK_HOME=/opt/spark
-export PATH=$SPARK_HOME/bin:$SPARK_HOME/sbin:$PATH
-export PYSPARK_PYTHON=python3
+python scripts/install_spark.py
 ```
+Or follow this guide [Spark Installation](docs/install_spark.md) to Download and configure Spark:
 
-Add the `export` commands to your shell configuration file (e.g., `~/.bashrc` or `~/.zshrc`) to persist them.
+
 
 ### 5. Set Up Apache Airflow
 
 #### Install Airflow
 
-Install Airflow with required dependencies:
+Fast Installation
 
 ```bash
-pip install "apache-airflow[async,celery,postgres,cncf.kubernetes]" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.9.3/constraints-3.12.txt"
+python scripts\install_airflow.py
 ```
+Or Read Duide at [Airflow Installation](docs/install_airflow.md)
 
 #### Configure Airflow Home
 
 Set the Airflow home directory:
 ```bash
 python installations/installation_airflow.py
-```
-
-#### Start Airflow Webserver
-
-Run the webserver (default port: 8081):
-
-```bash
-airflow webserver --port 8081 > airflow /airflow.log 2>&1 &
 ```
 
 ### 6. Access Airflow
