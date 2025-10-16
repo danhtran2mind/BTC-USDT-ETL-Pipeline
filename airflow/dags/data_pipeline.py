@@ -8,10 +8,10 @@ import sys
 # Add the project root directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from scripts.duckdb_api import push_to_duckdb
-from scripts.process_data import process_financial_data
-from scripts.btcusdt_ingest_data import crawl_data_from_sources
-from scripts.datalake_cr import up_to_datalake
+from components.duckdb_api import push_to_duckdb
+from components.process_data import process_financial_data
+from components.btcusdt_ingest_data import crawl_data_from_sources
+from components.datalake_cr import up_to_datalake
 
 default_args = {
     'owner': 'airflow',

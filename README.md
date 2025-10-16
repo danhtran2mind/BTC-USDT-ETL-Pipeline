@@ -76,6 +76,8 @@ Set environment variables and start the MinIO server:
 ```bash
 export MINIO_ROOT_USER=<your_username>
 export MINIO_ROOT_PASSWORD=<your_password>
+# Start server with credentials
+MINIO_ROOT_USER=$MINIO_ROOT_USER MINIO_ROOT_PASSWORD=$MINIO_ROOT_PASSWORD \
 ./minio server ~/minio-data --address :9192 --console-address :9193 > logs/minio_server.log 2>&1 &
 ```
 
