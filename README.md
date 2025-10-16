@@ -97,9 +97,14 @@ Or follow this guide [Spark Installation](docs/install_spark.md) to Download and
 Fast Installation
 
 ```bash
-python scripts\install_airflow.py
+python scripts/install_airflow.py
 ```
 Or Read Duide at [Airflow Installation](docs/install_airflow.md)
+
+Run Airflow:
+```bash
+airflow webserver --port 8081 > airflow/airflow.log 2>&1 &
+```
 
 #### Configure Airflow Home
 
