@@ -45,7 +45,7 @@ def create_bucket(minio_client, bucket_name):
         print(f"Error creating bucket: {err}")
         return False
 
-def upload_file(minio_client, bucket_name, client_file, server_file):
+def upload_file(    , bucket_name, client_file, server_file):
     """Upload a file to the specified bucket."""
     try:
         minio_client.fput_object(bucket_name, server_file, client_file)

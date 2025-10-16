@@ -21,17 +21,9 @@ This project builds a scalable, cloud-native pipeline to process BTC-USDT tradin
 
 ## Technologies
 
-- Python 3
 - Apache Airflow
 - Apache Spark
 - MinIO
-
-## Prerequisites
-
-- Python 3.12+
-- Git
-- Bash-compatible shell
-- Internet access for downloading dependencies
 
 ## Quickstart Guide
 
@@ -59,18 +51,10 @@ pip install -r requirements.txt
 Run the provided script to download and install MinIO:
 
 ```bash
-python installations/install_minio.py
+python installations\install_mino.py
 ```
 
-#### Start MinIO Server
 
-Set environment variables and start the MinIO server:
-
-```bash
-export MINIO_ROOT_USER=<your_username>
-export MINIO_ROOT_PASSWORD=<your_password>
-./minio server ~/minio-data --address :9192 --console-address :9193 > logs/minio_server.log 2>&1 &
-```
 
 #### Configure MinIO Secrets
 
@@ -84,6 +68,16 @@ MINIO_BROWSER=localhost:9193
 ```
 
 Replace `<your_username>` and `<your_password>` with your chosen credentials.
+
+#### Start MinIO Server
+
+Set environment variables and start the MinIO server:
+
+```bash
+export MINIO_ROOT_USER=<your_username>
+export MINIO_ROOT_PASSWORD=<your_password>
+./minio server ~/minio-data --address :9192 --console-address :9193 > logs/minio_server.log 2>&1 &
+```
 
 ### 4. Set Up Apache Spark
 
@@ -113,37 +107,8 @@ pip install "apache-airflow[async,celery,postgres,cncf.kubernetes]" --constraint
 #### Configure Airflow Home
 
 Set the Airflow home directory:
-
 ```bash
-export AIRFLOW_HOME=$(pwd)/airflow
-```
-
-Add this to your shell configuration file for persistence.
-
-#### Initialize Airflow Database
-
-```bash
-airflow db init
-```
-
-#### Create an Admin User
-
-```bash
-airflow users create \
-  --username admin \
-  --firstname Admin \
-  --lastname User \
-  --role Admin \
-  --email admin@example.com \
-  --password admin
-```
-
-#### Start Airflow Scheduler
-
-Run the scheduler in the background:
-
-```bash
-nohup airflow scheduler > airflow/scheduler.log 2>&1 &
+python installations/installation_airflow.py
 ```
 
 #### Start Airflow Webserver
@@ -151,7 +116,7 @@ nohup airflow scheduler > airflow/scheduler.log 2>&1 &
 Run the webserver (default port: 8081):
 
 ```bash
-airflow webserver --port 8081 > logs/airflow.log 2>&1 &
+airflow webserver --port 8081 > airflow /airflow.log 2>&1 &
 ```
 
 ### 6. Access Airflow

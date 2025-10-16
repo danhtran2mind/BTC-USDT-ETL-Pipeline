@@ -24,20 +24,3 @@ try:
 except subprocess.CalledProcessError as e:
     print(f"Failed to start MinIO: {e}")
 
-# Optional ngrok tunneling
-use_ngrok = True  # Set this based on your needs
-
-if use_ngrok:
-    from pyngrok import ngrok
-    load_dotenv("tunneling.env")
-    NGROK_AUTHTOKEN = os.getenv("NGROK_TOKEN")
-    ngrok.set_auth_token(NGROK_AUTHTOKEN)
-
-    tunnel = ngrok.connect(
-        addr=address_port,    # local service port
-        proto="http",         # creates both http & https URLs
-        bind_tls=True         # forces HTTPS (ngrok’s TLS termination)
-    )
-
-    print("Public HTTPS URL →", tunnel.public_url)   # e.g. https://abcd1234.ngrok.io
-    print("Public HTTP URL  →", tunnel.config["addr"])  # raw address, usually same host
