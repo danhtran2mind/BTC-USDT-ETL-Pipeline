@@ -205,7 +205,7 @@ Create a `minio.env` file in the project root with the following:
 MINIO_ROOT_USER=<your_username>
 MINIO_ROOT_PASSWORD=<your_password>
 MINIO_HOST=localhost:9192
-MINIO_BROWSER=localhost:9193
+MINIO_CONSOLE_ADDRESS=localhost:9193
 ```
 
 Replace `<your_username>` and `<your_password>` with secure credentials of your choice.

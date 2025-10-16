@@ -95,13 +95,13 @@ The scheduler is responsible for scheduling and executing DAGs. Start it in the 
 
 ```bash
 # Start scheduler first (it needs DB)
-nohup airflow scheduler > /content/BTC-USDT-ETL-Pipeline/airflow/scheduler.log 2>&1 &
+nohup airflow scheduler > airflow/scheduler.log 2>&1 &
 ```
 
 **Notes**:
 - The scheduler requires the database to be initialized first.
 - Logs are redirected to `scheduler.log` in the specified directory.
-- Replace `/content/BTC-USDT-ETL-Pipeline/airflow` with your `AIRFLOW_HOME` path if different.
+- Replace `airflow` with your `AIRFLOW_HOME` path if different.
 
 ### 6. Start the Airflow Webserver
 The webserver provides the Airflow UI for managing DAGs, viewing task logs, and monitoring runs. Start it on port 8081 (or another port if needed).
