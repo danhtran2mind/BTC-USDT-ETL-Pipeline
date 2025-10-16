@@ -22,7 +22,7 @@ dag_1 = DAG(
     'crawl_data_from_sources_pipeline',
     default_args=default_args,
     schedule_interval='@monthly',
-    max_active_runs=1
+    max_active_runs=1,
     catchup=False
 )
 
@@ -30,7 +30,7 @@ dag_2 = DAG(
     'etl_pipeline',
     default_args=default_args,
     schedule_interval='@monthly',
-    max_active_runs=1
+    max_active_runs=1,
     catchup=False
 )
 

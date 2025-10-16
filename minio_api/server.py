@@ -13,8 +13,8 @@ load_dotenv("minio.env")
 minio_root_user = os.getenv("MINIO_ROOT_USER")
 minio_root_password = os.getenv("MINIO_ROOT_PASSWORD")
 
-address_port = 12345
-web_port = 12346
+address_port = 9192
+web_port = 9193
 
 # Start MinIO server in background
 command = f'./minio server ~/minio-data --address ":{address_port}" --console-address ":{web_port}" &'

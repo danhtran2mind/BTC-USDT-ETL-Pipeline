@@ -54,7 +54,7 @@ Run the provided script to download and install MinIO:
 python scripts/install_mino.py
 ```
 
-
+You can see more optional arguments at [MinIO Server Installation](docs/install_minio_server.md)
 
 #### Configure MinIO Secrets
 
@@ -101,16 +101,12 @@ python scripts/install_airflow.py
 ```
 Or Read Duide at [Airflow Installation](docs/install_airflow.md)
 
-Run Airflow:
-```bash
-airflow webserver --port 8081 > airflow/airflow.log 2>&1 &
-```
 
 #### Configure Airflow Home
 
 Set the Airflow home directory:
 ```bash
-python installations/installation_airflow.py
+python scripts/installation_airflow.py
 ```
 
 ### 6. Access Airflow
