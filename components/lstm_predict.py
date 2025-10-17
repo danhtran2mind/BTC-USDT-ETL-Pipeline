@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from utils import create_sequences
+from components.utils.lstm_utils import create_sequences
 from model import build_lstm_model
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow import keras

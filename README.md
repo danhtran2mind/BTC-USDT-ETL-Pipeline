@@ -262,6 +262,10 @@ Navigate to `http://localhost:8081` in your browser. Log in with the default cre
 
 Use the Airflow UI to trigger and monitor BTC-USDT ETL workflows.
 
+### 6. Export Data to CSV for Visualization
+
+You can read more at [Export DuckDB to CSV](docs/visualize_data.md)
+
 ## Troubleshooting
 
 - **MinIO Fails to Start**: Verify ports `9192` and `9193` are free. Review `logs/minio_server.log` for error details.
