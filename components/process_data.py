@@ -1,4 +1,3 @@
-# scripts/process_data.py
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, LongType, DoubleType, IntegerType
 from pyspark.sql.functions import col, row_number, floor, first, max, min, last, sum
@@ -21,38 +20,21 @@ def initialize_spark_session(app_name="MinIO to Spark DataFrame",
         .config("spark.executor.memory", executor_memory) \
         .getOrCreate()
 
-def create_dataframe_from_csv(spark, csv_lines, temp_parquet_path="temp/temp_parquet_chunks", 
+def create_dataframe_from_csv(spark, csv_file_path, schema, temp_parquet_path="temp/temp_parquet_chunks", 
                               chunk_size=int(3e+6)):
     os.makedirs(temp_parquet_path, exist_ok=True)
-    schema = StructType([
-        StructField("Open time", LongType(), True),
-        StructField("Open", DoubleType(), True),
-        StructField("High", DoubleType(), True),
-        StructField("Low", DoubleType(), True),
-        StructField("Close", DoubleType(), True),
-        StructField("Volume", DoubleType(), True),
-        StructField("Close time", LongType(), True),
-        StructField("Quote asset volume", DoubleType(), True),
-        StructField("Number of trades", IntegerType(), True),
-        StructField("Taker buy base asset volume", DoubleType(), True),
-        StructField("Taker buy quote asset volume", DoubleType(), True),
-        StructField("Ignore", IntegerType(), True)
-    ])
-
-    if csv_lines and csv_lines[0].startswith("Open time,"):
-        data_lines = csv_lines[1:]
-    else:
-        data_lines = csv_lines
-
+    
+    # Read CSV file in chunks using pandas to handle large files
     if os.path.exists(temp_parquet_path):
         shutil.rmtree(temp_parquet_path)
-
-    for i in range(0, len(data_lines), chunk_size):
-        chunk = data_lines[i:i + chunk_size]
-        rdd_chunk = spark.sparkContext.parallelize(chunk).repartition(8)
+    
+    # Process CSV file in chunks
+    for i, chunk in enumerate(pd.read_csv(csv_file_path, chunksize=chunk_size)):
+        # Convert pandas chunk to Spark DataFrame
+        rdd_chunk = spark.sparkContext.parallelize(chunk.to_csv(index=False, header=False).splitlines()).repartition(8)
         df_chunk = spark.read.schema(schema).csv(rdd_chunk, header=False)
         df_chunk.write.mode("append").parquet(temp_parquet_path)
-
+    
     return spark.read.parquet(temp_parquet_path)
 
 def resample_dataframe(df, track_each=3600):
@@ -73,20 +55,43 @@ def resample_dataframe(df, track_each=3600):
     return aggregated_df.select("Open time", "Open", "High", "Low", "Close", "Number of trades")
 
 def extract_from_minio(bucket_name="minio-ngrok-bucket", 
-                   file_name="BTCUSDT-1s-2025-09.csv"):
+                       file_name="BTCUSDT-1s-2025-09.csv", 
+                       temp_file_path="temp/minio_extracted.csv"):
     minio_client = sign_in()
     csv_lines = get_minio_data(minio_client, bucket_name, file_name)
-    return csv_lines
+    if not csv_lines:
+        raise ValueError(f"No data retrieved from MinIO for bucket {bucket_name}, file {file_name}")
+    
+    os.makedirs(os.path.dirname(temp_file_path), exist_ok=True)
+    with open(temp_file_path, 'w') as f:
+        f.write('\n'.join(csv_lines))
+    return temp_file_path
 
-def transform_financial_data(csv_lines,                    
-                   temp_parquet_path="temp/temp_parquet_chunks", 
-                   output_parquet_path="temp/aggregated_output"):
-    # minio_client = sign_in()
+def transform_financial_data(csv_file_path, 
+                            temp_parquet_path="temp/temp_parquet_chunks", 
+                            output_parquet_path="temp/aggregated_output"):
     spark = initialize_spark_session()
     
     try:
-        df = create_dataframe_from_csv(spark, csv_lines, temp_parquet_path)
-        print("Created Spark DataFrame from CSV data.")
+        # Define the schema
+        schema = StructType([
+            StructField("Open time", LongType(), True),
+            StructField("Open", DoubleType(), True),
+            StructField("High", DoubleType(), True),
+            StructField("Low", DoubleType(), True),
+            StructField("Close", DoubleType(), True),
+            StructField("Volume", DoubleType(), True),
+            StructField("Close time", LongType(), True),
+            StructField("Quote asset volume", DoubleType(), True),
+            StructField("Number of trades", IntegerType(), True),
+            StructField("Taker buy base asset volume", DoubleType(), True),
+            StructField("Taker buy quote asset volume", DoubleType(), True),
+            StructField("Ignore", IntegerType(), True)
+        ])
+        
+        # Create DataFrame using create_dataframe_from_csv
+        df = create_dataframe_from_csv(spark, csv_file_path, schema, temp_parquet_path)
+        print("Created Spark DataFrame from CSV file.")
         aggregated_df = resample_dataframe(df)
         print("Resampled DataFrame with OHLC aggregations.")
         
@@ -104,14 +109,13 @@ def transform_financial_data(csv_lines,
         return output_parquet_path
     
     except Exception as e:
-        print(f"Error in process_financial_data: {e}")
+        print(f"Error in transform_financial_data: {e}")
         raise
     finally:
         spark.stop()
 
 if __name__ == "__main__":
     # Example usage
-    minio_client = sign_in()
-    extracted_csv_lines = extract_from_minio(minio_client)
-    output_parquet_path = transform_financial_data()
+    extracted_csv_file = extract_from_minio()
+    output_parquet_path = transform_financial_data(extracted_csv_file)
     print(output_parquet_path)

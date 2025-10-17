@@ -1,4 +1,3 @@
-# airflow/dags/data_pipeline.py
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
@@ -12,7 +11,6 @@ from components.duckdb_api import push_to_duckdb
 from components.process_data import extract_from_minio, transform_financial_data
 from components.btcusdt_ingest_data import crawl_data_from_sources
 from components.datalake_cr import up_to_datalake
-
 
 default_args = {
     'owner': 'airflow',
@@ -67,6 +65,7 @@ extract_data = PythonOperator(
     op_kwargs={
         'bucket_name': 'minio-ngrok-bucket',
         'file_name': 'BTCUSDT-1s-2025-09.csv',
+        'temp_file_path': 'temp/minio_extracted.csv'
     }
 )
 
@@ -75,7 +74,7 @@ transform_data = PythonOperator(
     task_id='transform_data',
     python_callable=transform_financial_data,
     op_kwargs={
-        'csv_lines': '{{ ti.xcom_pull(task_ids="extract_data") }}',
+        'csv_file_path': '{{ ti.xcom_pull(task_ids="extract_data") }}',
         'temp_parquet_path': 'temp/temp_parquet_chunks',
         'output_parquet_path': 'temp/aggregated_output'
     }
