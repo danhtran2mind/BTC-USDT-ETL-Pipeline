@@ -2,6 +2,7 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
+from minio_api.client import sign_in
 import os
 import sys
 
@@ -9,7 +10,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from components.duckdb_api import push_to_duckdb
-from components.process_data import process_financial_data
+from components.process_data import extract_from_minio, transform_financial_data
 from components.btcusdt_ingest_data import crawl_data_from_sources
 from components.datalake_cr import up_to_datalake
 
@@ -34,6 +35,10 @@ dag_2 = DAG(
     catchup=False
 )
 
+# ========================================================================== #
+#                       Download and Save to MinIO DAG                       #
+# ========================================================================== #
+
 download_binance_csv = PythonOperator(
     dag=dag_1,
     task_id='download_binance_csv',
@@ -51,13 +56,27 @@ upload_to_datalake = PythonOperator(
     }
 )
 
-extract_and_transform_data = PythonOperator(
+# ========================================================================== #
+#                                  ETL DAG                                   #
+# ========================================================================== #
+
+extract_data = PythonOperator(
     dag=dag_2,
-    task_id='extract_and_transform_data',
-    python_callable=process_financial_data,
+    task_id='extract_data',
+    python_callable=extract_from_minio,
     op_kwargs={
+        'minio_client': sign_in(),
         'bucket_name': 'minio-ngrok-bucket',
         'file_name': 'BTCUSDT-1s-2025-09.csv',
+    }
+)
+
+transform_data = PythonOperator(
+    dag=dag_2,
+    task_id='transform_data',
+    python_callable=transform_financial_data,
+    op_kwargs={
+        'csv_lines': '{{ ti.xcom_pull(task_ids="extract_data") }}',
         'temp_parquet_path': 'temp/temp_parquet_chunks',
         'output_parquet_path': 'temp/aggregated_output'
     }
@@ -68,10 +87,10 @@ push_to_warehouse = PythonOperator(
     python_callable=push_to_duckdb,
     op_kwargs={
         'duckdb_path': 'duckdb_databases/financial_data.db',
-        'parquet_path': '{{ ti.xcom_pull(task_ids="extract_and_transform_data") }}'
+        'parquet_path': '{{ ti.xcom_pull(task_ids="transform_data") }}'
     },
     dag=dag_2
 )
 
 download_binance_csv >> upload_to_datalake
-extract_and_transform_data >> push_to_warehouse
+extract_data >> transform_data >> push_to_warehouse

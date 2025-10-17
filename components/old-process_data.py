@@ -3,7 +3,6 @@ from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, LongType, DoubleType, IntegerType
 from pyspark.sql.functions import col, row_number, floor, first, max, min, last, sum
 from pyspark.sql.window import Window
-from minio_api.client import sign_in
 import os
 import sys
 import shutil
@@ -11,6 +10,7 @@ import pandas as pd
 
 # Add the project root directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from minio_api.client import sign_in
 from minio_api.minio_utils import get_minio_data
 
 def initialize_spark_session(app_name="MinIO to Spark DataFrame", 
@@ -72,18 +72,15 @@ def resample_dataframe(df, track_each=3600):
     aggregated_df = df.groupBy("group_id").agg(*aggregations)
     return aggregated_df.select("Open time", "Open", "High", "Low", "Close", "Number of trades")
 
-def extract_from_minio(minio_client, bucket_name="minio-ngrok-bucket", 
-                   file_name="BTCUSDT-1s-2025-09.csv",):
-    csv_lines = get_minio_data(minio_client, bucket_name, file_name)
-    return csv_lines
-
-def transform_financial_data(csv_lines,                    
-                   temp_parquet_path="temp/temp_parquet_chunks", 
-                   output_parquet_path="temp/aggregated_output"):
-    # minio_client = sign_in()
+def process_financial_data(bucket_name="minio-ngrok-bucket", file_name="BTCUSDT-1s-2025-09.csv", 
+                           temp_parquet_path="temp/temp_parquet_chunks", 
+                           output_parquet_path="temp/aggregated_output"):
+    minio_client = sign_in()
     spark = initialize_spark_session()
     
     try:
+        csv_lines = get_minio_data(minio_client, bucket_name, file_name)
+        print(f"Fetched CSV data from MinIO: {len(csv_lines)} lines")
         df = create_dataframe_from_csv(spark, csv_lines, temp_parquet_path)
         print("Created Spark DataFrame from CSV data.")
         aggregated_df = resample_dataframe(df)
@@ -110,7 +107,5 @@ def transform_financial_data(csv_lines,
 
 if __name__ == "__main__":
     # Example usage
-    minio_client = sign_in()
-    extracted_csv_lines = extract_from_minio(minio_client)
-    output_parquet_path = transform_financial_data()
+    output_parquet_path = process_financial_data()
     print(output_parquet_path)
