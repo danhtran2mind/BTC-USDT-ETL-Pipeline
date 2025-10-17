@@ -2,7 +2,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
-from minio_api.client import sign_in
 import os
 import sys
 
@@ -13,6 +12,7 @@ from components.duckdb_api import push_to_duckdb
 from components.process_data import extract_from_minio, transform_financial_data
 from components.btcusdt_ingest_data import crawl_data_from_sources
 from components.datalake_cr import up_to_datalake
+
 
 default_args = {
     'owner': 'airflow',
@@ -65,7 +65,6 @@ extract_data = PythonOperator(
     task_id='extract_data',
     python_callable=extract_from_minio,
     op_kwargs={
-        'minio_client': sign_in(),
         'bucket_name': 'minio-ngrok-bucket',
         'file_name': 'BTCUSDT-1s-2025-09.csv',
     }

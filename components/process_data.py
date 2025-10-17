@@ -72,8 +72,9 @@ def resample_dataframe(df, track_each=3600):
     aggregated_df = df.groupBy("group_id").agg(*aggregations)
     return aggregated_df.select("Open time", "Open", "High", "Low", "Close", "Number of trades")
 
-def extract_from_minio(minio_client, bucket_name="minio-ngrok-bucket", 
-                   file_name="BTCUSDT-1s-2025-09.csv",):
+def extract_from_minio(bucket_name="minio-ngrok-bucket", 
+                   file_name="BTCUSDT-1s-2025-09.csv"):
+    minio_client = sign_in()
     csv_lines = get_minio_data(minio_client, bucket_name, file_name)
     return csv_lines
 
