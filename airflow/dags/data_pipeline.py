@@ -288,8 +288,8 @@ train_lstm = PythonOperator(
     dag=dag_3
 )
 
-predict_lstm = PythonOperator(
-    task_id='predict_lstm_model',
+metric_and_predict_lstm = PythonOperator(
+    task_id='metric_and_predict_lstm',
     python_callable=metric_and_predict_lstm_model,
     dag=dag_3
 )
@@ -301,10 +301,11 @@ predict_lstm = PythonOperator(
 export_duckdb_to_csv = PythonOperator(
     task_id='export_duckdb_to_csv',
     python_callable=duckdb_to_csv,
-    dag=dag_3
+    dag=dag_4
 )
 
 download_binance_csv >> upload_to_datalake
 extract_data >> transform_data >> push_to_warehouse
-train_lstm >> predict_lstm
+train_lstm >> metric_and_predict_lstm
+
 export_duckdb_to_csv
