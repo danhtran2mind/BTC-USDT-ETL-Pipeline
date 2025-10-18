@@ -113,7 +113,9 @@ def transform_financial_data(csv_file_paths,
                 print(f"Verified: Parquet directory exists at {output_parquet_path}")
             output_parquet_paths.append(output_parquet_path)
 
-        return output_parquet_paths
+        name_output_parquet_paths = [os.path.basename(path) for path in output_parquet_paths]
+        
+        return output_parquet_paths, name_output_parquet_paths
     
     except Exception as e:
         print(f"Error in transform_financial_data: {e}")

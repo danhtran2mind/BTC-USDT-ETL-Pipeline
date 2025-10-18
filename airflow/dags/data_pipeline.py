@@ -89,28 +89,14 @@ download_binance_csv = PythonOperator(
 #     }
 # )
 
-def extract_filenames(**kwargs):
-    ti = kwargs['ti']
-    file_paths = ti.xcom_pull(task_ids='download_binance_csv')
-    print("file_paths: ", file_paths)
-    if not isinstance(file_paths, list):
-        file_paths = [file_paths]
-    filenames = [os.path.basename(path) for path in file_paths]
-    return filenames
-
-extract_filenames_task = PythonOperator(
-    task_id='extract_filenames',
-    python_callable=extract_filenames,
-    dag=dag_1
-)
 
 upload_to_minio_storage = PythonOperator(
     dag=dag_1,
     task_id='upload_to_minio',
     python_callable=up_to_minio,
     op_kwargs={
-        'client_files': '{{ ti.xcom_pull(task_ids="download_binance_csv") }}',
-        'server_files': '{{ ti.xcom_pull(task_ids="extract_filenames") }}',
+        'client_files': '{{ ti.xcom_pull(task_ids="download_binance_csv")[0] }}',
+        'server_files': '{{ ti.xcom_pull(task_ids="download_binance_csv")[1] }}',
         'bucket_name': 'minio-ngrok-bucket'
     }
 )
@@ -333,8 +319,8 @@ export_duckdb_to_csv = PythonOperator(
     dag=dag_4
 )
 
-# download_binance_csv >> upload_to_minio_storage
-download_binance_csv >> extract_filenames_task >> upload_to_minio_storage
+download_binance_csv >> upload_to_minio_storage
+# download_binance_csv >> extract_filenames_task >> upload_to_minio_storage
 extract_data >> transform_data >> push_to_warehouse
 train_lstm >> metric_and_predict_lstm
 
