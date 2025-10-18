@@ -95,7 +95,7 @@ upload_to_minio_storage = PythonOperator(
     python_callable=up_to_minio,
     op_kwargs={
         'client_files': '{{ ti.xcom_pull(task_ids="download_binance_csv") }}',
-        'server_files': '{{ ti.xcom_pull(task_ids="download_binance_csv") | map(attribute="split", value="/") | map("last") | list }}',
+        'server_files': '{{ [path.split("/")[-1] for path in ti.xcom_pull(task_ids="download_binance_csv")] }}',
         'bucket_name': 'minio-ngrok-bucket'
     }
 )

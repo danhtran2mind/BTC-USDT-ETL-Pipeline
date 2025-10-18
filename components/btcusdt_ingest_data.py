@@ -94,4 +94,5 @@ def crawl_data_from_sources():
         raise Exception(f"Script execution failed: {e}")
 
 if __name__ == "__main__":
-    crawl_data_from_sources()
+    out_paths = crawl_data_from_sources()
+    print("Downloaded files:", out_paths)
