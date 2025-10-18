@@ -20,7 +20,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 from components.duckdb_api import push_to_duckdb
 from components.process_data import extract_from_minio, transform_financial_data
 from components.btcusdt_ingest_data import crawl_data_from_sources
-from components.datalake_cr import up_to_datalake
+from components.datalake_cr import up_to_minio
 from components.duckdb2csv import duckdb_to_csv
 
 from components.utils.lstm_utils import create_sequences
@@ -76,10 +76,10 @@ download_binance_csv = PythonOperator(
     python_callable=crawl_data_from_sources,
 )
 
-upload_to_datalake = PythonOperator(
+upload_to_minio_storage = PythonOperator(
     dag=dag_1,
-    task_id='upload_to_datalake',
-    python_callable=up_to_datalake,
+    task_id='upload_to_minio',
+    python_callable=up_to_minio,
     op_kwargs={
         # 'client_files': 'temp/BTCUSDT-1s-2025-09.csv',
         'client_files': '{{ ti.xcom_pull(task_ids="download_binance_csv") }}', 
@@ -307,7 +307,7 @@ export_duckdb_to_csv = PythonOperator(
     dag=dag_4
 )
 
-download_binance_csv >> upload_to_datalake
+download_binance_csv >> upload_to_minio_storage
 extract_data >> transform_data >> push_to_warehouse
 train_lstm >> metric_and_predict_lstm
 
