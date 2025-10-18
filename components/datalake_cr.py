@@ -5,18 +5,19 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from minio_api.client import sign_in, upload_file, download_file, create_bucket, list_objects
 
-def up_to_datalake(client_file, server_file, bucket_name="minio-ngrok-bucket"):
+def up_to_datalake(client_files, server_files, bucket_name="minio-ngrok-bucket"):
     """Upload the local CSV file to MinIO."""
-    # Check if local file exists
-    if not os.path.exists(client_file):
-        raise FileNotFoundError(f"Local file {client_file} does not exist")
-    
-    minio_client = sign_in()
-    # Create bucket
-    create_bucket(minio_client, bucket_name)
+    for client_file, server_file in zip(client_files, server_files):
+        # Check if local file exists
+        if not os.path.exists(client_file):
+            raise FileNotFoundError(f"Local file {client_file} does not exist")
+        
+        minio_client = sign_in()
+        # Create bucket
+        create_bucket(minio_client, bucket_name)
 
-    # Upload file
-    upload_file(minio_client, bucket_name, client_file, server_file)
+        # Upload file
+        upload_file(minio_client, bucket_name, client_file, server_file)
 
 if __name__ == "__main__":
     # Example usage

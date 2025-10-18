@@ -5,7 +5,6 @@ import os
 import sys
 
 import uuid
-import yaml
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
@@ -93,23 +92,14 @@ upload_to_datalake = PythonOperator(
 #                                  ETL DAG                                   #
 # ========================================================================== #
 
-def load_extract_config():
-    """Load file names from extract_data.yml and generate UUID-based temp file paths."""
-    config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'configs', 'extract_data.yml')
-    with open(config_path, 'r') as file:
-        config = yaml.safe_load(file)
-    file_names = config.get('files', [])
-    temp_file_paths = [os.path.join('temp', f"{str(uuid.uuid4())}.csv") for _ in file_names]
-    return file_names, temp_file_paths
-
 extract_data = PythonOperator(
     dag=dag_2,
     task_id='extract_data',
     python_callable=extract_from_minio,
     op_kwargs={
         'bucket_name': 'minio-ngrok-bucket',
-        'file_names': load_extract_config()[0],
-        'temp_file_paths': load_extract_config()[1]
+        'file_name': 'BTCUSDT-1s-2025-09.csv',
+        'temp_file_path': 'temp/minio_extracted.csv'
     }
 )
 
@@ -140,20 +130,16 @@ push_to_warehouse = PythonOperator(
 
 def train_lstm_model(**kwargs):
     ti = kwargs['ti']
-    parquet_paths = ti.xcom_pull(task_ids='extract_data', dag_id='etl_pipeline')
+    parquet_path = ti.xcom_pull(task_ids='transform_data', dag_id='etl_pipeline')
     
-    all_df = pd.DataFrame()
-    for parquet_path in parquet_paths:
-        # Generate unique file names
-        unique_id = str(uuid.uuid4())
-        model_ckpt_path = f'ckpts/lstm_checkpoint_{unique_id}.keras'
-        scaler_path = f'ckpts/scaler_{unique_id}.pkl'
-        os.makedirs('ckpts', exist_ok=True)
+    # Generate unique file names
+    unique_id = str(uuid.uuid4())
+    model_ckpt_path = f'ckpts/lstm_checkpoint_{unique_id}.keras'
+    scaler_path = f'ckpts/scaler_{unique_id}.pkl'
+    os.makedirs('ckpts', exist_ok=True)
     
-        # Load and preprocess data
-        df = pd.read_parquet(parquet_path)
-        all_df = pd.concat([all_df, df], ignore_index=True)
-
+    # Load and preprocess data
+    df = pd.read_parquet(parquet_path)
     prices = df['Close'].astype(float).values.reshape(-1, 1)
     
     # Scale data
@@ -198,22 +184,14 @@ def train_lstm_model(**kwargs):
 
 def metric_and_predict_lstm_model(**kwargs):
     ti = kwargs['ti']
-    csv_paths = ti.xcom_pull(task_ids='extract_data', dag_id='etl_pipeline')
+    parquet_path = ti.xcom_pull(task_ids='transform_data', dag_id='etl_pipeline')
     paths = ti.xcom_pull(task_ids='train_lstm_model')
     model_path = paths['model_path']
     scaler_path = paths['scaler_path']
     
-    # Ensure csv_paths is a list
-    if not isinstance(csv_paths, list):
-        csv_paths = [csv_paths]
-    
     # Load data
-    all_df = pd.DataFrame()
-    for csv_path in csv_paths:
-        df = pd.read_csv(csv_path)
-        all_df = pd.concat([all_df, df], ignore_index=True)
-    
-    prices = all_df['Close'].astype(float).values.reshape(-1, 1)
+    df = pd.read_parquet(parquet_path)
+    prices = df['Close'].astype(float).values.reshape(-1, 1)
     
     # Load scaler
     if not os.path.exists(scaler_path):

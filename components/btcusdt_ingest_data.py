@@ -44,7 +44,8 @@ def crawl_data_from_sources():
 
         # Create a dictionary of limits for each data source
         limits_dict = {limit['name']: limit['limit'] for limit in data_limits if isinstance(limit, dict) and 'name' in limit and 'limit' in limit}
-
+        
+        output_paths = []
         # Process each data source
         for data_source in data_sources:
             try:
@@ -80,11 +81,13 @@ def crawl_data_from_sources():
                     except Exception as e:
                         print(f"Failed to process period {period} for {data_source['name']}: {e}")
                         continue
-
+                    output_paths.append(output_path)
+                
             except Exception as e:
                 print(f"Failed to process data source {data_source.get('name', 'unknown')}: {e}")
                 continue
-
+        return output_paths
+    
     except (yaml.YAMLError, FileNotFoundError) as e:
         raise Exception(f"Failed to load configuration: {e}")
     except Exception as e:

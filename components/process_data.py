@@ -55,19 +55,23 @@ def resample_dataframe(df, track_each=3600):
     return aggregated_df.select("Open time", "Open", "High", "Low", "Close", "Number of trades")
 
 def extract_from_minio(bucket_name="minio-ngrok-bucket", 
-                       file_name="BTCUSDT-1s-2025-09.csv", 
-                       temp_file_path="temp/minio_extracted.csv"):
+                       file_names=["BTCUSDT-1s-2025-09.csv"], 
+                       temp_file_paths=["temp/minio_extracted.csv"]):
     minio_client = sign_in()
-    csv_lines = get_minio_data(minio_client, bucket_name, file_name)
-    if not csv_lines:
-        raise ValueError(f"No data retrieved from MinIO for bucket {bucket_name}, file {file_name}")
+    temp_file_paths = []
+    for file_name, temp_file_path in zip(file_names, temp_file_paths):
+        csv_lines = get_minio_data(minio_client, bucket_name, file_name)
+        if not csv_lines:
+            raise ValueError(f"No data retrieved from MinIO for bucket {bucket_name}, file {file_name}")
+        
+        os.makedirs(os.path.dirname(temp_file_path), exist_ok=True)
+        with open(temp_file_path, 'w') as f:
+            f.write('\n'.join(csv_lines))
+        temp_file_paths.append(temp_file_path)
     
-    os.makedirs(os.path.dirname(temp_file_path), exist_ok=True)
-    with open(temp_file_path, 'w') as f:
-        f.write('\n'.join(csv_lines))
-    return temp_file_path
+    return temp_file_paths
 
-def transform_financial_data(csv_file_path, 
+def transform_financial_data(csv_file_paths, 
                             temp_parquet_path="temp/temp_parquet_chunks", 
                             output_parquet_path="temp/aggregated_output"):
     spark = initialize_spark_session()
@@ -88,24 +92,27 @@ def transform_financial_data(csv_file_path,
             StructField("Taker buy quote asset volume", DoubleType(), True),
             StructField("Ignore", IntegerType(), True)
         ])
-        
-        # Create DataFrame using create_dataframe_from_csv
-        df = create_dataframe_from_csv(spark, csv_file_path, schema, temp_parquet_path)
-        print("Created Spark DataFrame from CSV file.")
-        aggregated_df = resample_dataframe(df)
-        print("Resampled DataFrame with OHLC aggregations.")
-        
-        # Save aggregated DataFrame to a temporary Parquet directory
-        os.makedirs(os.path.dirname(output_parquet_path), exist_ok=True)
-        aggregated_df.write.mode("overwrite").parquet(output_parquet_path)
-        print(f"Saved aggregated DataFrame to {output_parquet_path}")
-        
-        # Verify that the Parquet directory exists
-        if not os.path.exists(output_parquet_path) or not os.path.isdir(output_parquet_path):
-            raise FileNotFoundError(f"Parquet directory {output_parquet_path} was not created or is not a directory.")
-        else:
-            print(f"Verified: Parquet directory exists at {output_parquet_path}")
-        
+
+        output_parquet_paths = []
+        for csv_file_path in csv_file_paths:
+            # Create DataFrame using create_dataframe_from_csv
+            df = create_dataframe_from_csv(spark, csv_file_path, schema, temp_parquet_path)
+            print("Created Spark DataFrame from CSV file.")
+            aggregated_df = resample_dataframe(df)
+            print("Resampled DataFrame with OHLC aggregations.")
+            
+            # Save aggregated DataFrame to a temporary Parquet directory
+            os.makedirs(os.path.dirname(output_parquet_path), exist_ok=True)
+            aggregated_df.write.mode("overwrite").parquet(output_parquet_path)
+            print(f"Saved aggregated DataFrame to {output_parquet_path}")
+            
+            # Verify that the Parquet directory exists
+            if not os.path.exists(output_parquet_path) or not os.path.isdir(output_parquet_path):
+                raise FileNotFoundError(f"Parquet directory {output_parquet_path} was not created or is not a directory.")
+            else:
+                print(f"Verified: Parquet directory exists at {output_parquet_path}")
+            output_parquet_paths.append(output_parquet_path)
+
         return output_parquet_path
     
     except Exception as e:
@@ -116,6 +123,6 @@ def transform_financial_data(csv_file_path,
 
 if __name__ == "__main__":
     # Example usage
-    extracted_csv_file = extract_from_minio()
-    output_parquet_path = transform_financial_data(extracted_csv_file)
+    extracted_csv_files = extract_from_minio()
+    output_parquet_path = transform_financial_data(extracted_csv_files)
     print(output_parquet_path)
