@@ -76,15 +76,26 @@ download_binance_csv = PythonOperator(
     python_callable=crawl_data_from_sources,
 )
 
+# upload_to_minio_storage = PythonOperator(
+#     dag=dag_1,
+#     task_id='upload_to_minio',
+#     python_callable=up_to_minio,
+#     op_kwargs={
+#         # 'client_files': 'temp/BTCUSDT-1s-2025-09.csv',
+#         'client_files': '{{ ti.xcom_pull(task_ids="download_binance_csv") }}', 
+#         # 'server_files': 'BTCUSDT-1s-2025-09.csv',
+#         'server_files': '{{ [path.split("/")[-1] for path in ti.xcom_pull(task_ids="download_binance_csv")] }}',
+#         'bucket_name': 'minio-ngrok-bucket'
+#     }
+# )
+
 upload_to_minio_storage = PythonOperator(
     dag=dag_1,
     task_id='upload_to_minio',
     python_callable=up_to_minio,
     op_kwargs={
-        # 'client_files': 'temp/BTCUSDT-1s-2025-09.csv',
-        'client_files': '{{ ti.xcom_pull(task_ids="download_binance_csv") }}', 
-        # 'server_files': 'BTCUSDT-1s-2025-09.csv',
-        'server_files': '{{ [path.split("/")[-1] for path in ti.xcom_pull(task_ids="download_binance_csv")] }}',
+        'client_files': '{{ ti.xcom_pull(task_ids="download_binance_csv") }}',
+        'server_files': '{{ ti.xcom_pull(task_ids="download_binance_csv") | map(attribute="split", value="/") | map("last") | list }}',
         'bucket_name': 'minio-ngrok-bucket'
     }
 )
