@@ -140,15 +140,12 @@ push_to_warehouse = PythonOperator(
 
 def train_lstm_model(**kwargs):
     ti = kwargs['ti']
-    parquet_paths = ti.xcom_pull(task_ids='extract_data', dag_id='etl_pipeline')
-    
+    # parquet_paths = ti.xcom_pull(task_ids='extract_data', dag_id='etl_pipeline')
+    parquet_paths = ti.xcom_pull(task_ids='transform_data', dag_id='etl_pipeline')
     all_df = pd.DataFrame()
     for parquet_path in parquet_paths:
         # Generate unique file names
-        unique_id = str(uuid.uuid4())
-        model_ckpt_path = f'ckpts/lstm_checkpoint_{unique_id}.keras'
-        scaler_path = f'ckpts/scaler_{unique_id}.pkl'
-        os.makedirs('ckpts', exist_ok=True)
+        
     
         # Load and preprocess data
         df = pd.read_parquet(parquet_path)
@@ -156,6 +153,11 @@ def train_lstm_model(**kwargs):
 
     prices = df['Close'].astype(float).values.reshape(-1, 1)
     
+    unique_id = str(uuid.uuid4())
+    model_ckpt_path = f'ckpts/lstm_checkpoint_{unique_id}.keras'
+    scaler_path = f'ckpts/scaler_{unique_id}.pkl'
+    os.makedirs('ckpts', exist_ok=True)
+
     # Scale data
     scaler = MinMaxScaler()
     prices_scaled = scaler.fit_transform(prices)
@@ -198,7 +200,8 @@ def train_lstm_model(**kwargs):
 
 def metric_and_predict_lstm_model(**kwargs):
     ti = kwargs['ti']
-    csv_paths = ti.xcom_pull(task_ids='extract_data', dag_id='etl_pipeline')
+    # csv_paths = ti.xcom_pull(task_ids='extract_data', dag_id='etl_pipeline')
+    csv_paths = ti.xcom_pull(task_ids='transform_data', dag_id='etl_pipeline')
     paths = ti.xcom_pull(task_ids='train_lstm_model')
     model_path = paths['model_path']
     scaler_path = paths['scaler_path']
