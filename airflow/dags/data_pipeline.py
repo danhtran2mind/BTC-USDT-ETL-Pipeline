@@ -13,6 +13,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from tensorflow import keras
 import pickle
+import logging
 
 # Add the project root directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
@@ -76,38 +77,19 @@ download_binance_csv = PythonOperator(
     python_callable=crawl_data_from_sources,
 )
 
-# upload_to_minio_storage = PythonOperator(
-#     dag=dag_1,
-#     task_id='upload_to_minio',
-#     python_callable=up_to_minio,
-#     op_kwargs={
-#         # 'client_files': 'temp/BTCUSDT-1s-2025-09.csv',
-#         'client_files': '{{ ti.xcom_pull(task_ids="download_binance_csv") }}', 
-#         # 'server_files': 'BTCUSDT-1s-2025-09.csv',
-#         'server_files': '{{ [path.split("/")[-1] for path in ti.xcom_pull(task_ids="download_binance_csv")] }}',
-#         'bucket_name': 'minio-ngrok-bucket'
-#     }
-# )
-
-def upload_to_minio_wrapper(**kwargs):
-    ti = kwargs['ti']
-    xcom_value = ti.xcom_pull(task_ids='download_binance_csv')
-    # logging.info(f"XCom value from download_binance_csv: {xcom_value}")
-    
-    if not isinstance(xcom_value, list) or len(xcom_value) != 2:
-        raise ValueError(f"Expected XCom to return a list of two lists, got: {xcom_value}")
-    
-    client_files, server_files = xcom_value
-    if not client_files or not server_files:
-        raise ValueError("Client files or server files are empty")
-    
-    return up_to_minio(client_files=client_files, server_files=server_files, bucket_name='minio-ngrok-bucket')
-
 upload_to_minio_storage = PythonOperator(
     dag=dag_1,
     task_id='upload_to_minio',
-    python_callable=upload_to_minio_wrapper,
+    python_callable=up_to_minio,
+    op_kwargs={
+        # 'client_files': 'temp/BTCUSDT-1s-2025-09.csv',
+        'client_files': '{{ ti.xcom_pull(task_ids="download_binance_csv") }}', 
+        # 'server_files': 'BTCUSDT-1s-2025-09.csv',
+        'server_files': '{{ [path.split("/")[-1] for path in ti.xcom_pull(task_ids="download_binance_csv")] }}',
+        'bucket_name': 'minio-ngrok-bucket'
+    }
 )
+
 
 # ========================================================================== #
 #                                  ETL DAG                                   #
