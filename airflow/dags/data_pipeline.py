@@ -92,7 +92,7 @@ download_binance_csv = PythonOperator(
 def upload_to_minio_wrapper(**kwargs):
     ti = kwargs['ti']
     xcom_value = ti.xcom_pull(task_ids='download_binance_csv')
-    logging.info(f"XCom value from download_binance_csv: {xcom_value}")
+    # logging.info(f"XCom value from download_binance_csv: {xcom_value}")
     
     if not isinstance(xcom_value, list) or len(xcom_value) != 2:
         raise ValueError(f"Expected XCom to return a list of two lists, got: {xcom_value}")
