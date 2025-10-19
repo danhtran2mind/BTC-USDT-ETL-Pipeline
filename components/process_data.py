@@ -2,7 +2,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, LongType, DoubleType, IntegerType
 from pyspark.sql.functions import col, row_number, floor, first, max, min, last, sum
 from pyspark.sql.window import Window
-from minio_api.client import sign_in
+
 import os
 import sys
 import shutil
@@ -11,6 +11,8 @@ import pandas as pd
 # Add the project root directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from minio_api.minio_utils import get_minio_data
+from minio_api.client import sign_in
+
 
 def initialize_spark_session(app_name="MinIO to Spark DataFrame", 
                              driver_memory="4g", executor_memory="4g"):
@@ -126,5 +128,6 @@ def transform_financial_data(csv_file_paths,
 if __name__ == "__main__":
     # Example usage
     extracted_csv_files = extract_from_minio()
-    output_parquet_path = transform_financial_data(extracted_csv_files)
+    output_parquet_path, name_output_parquet_paths = transform_financial_data(extracted_csv_files)
     print(output_parquet_path)
+    print(name_output_parquet_paths)
