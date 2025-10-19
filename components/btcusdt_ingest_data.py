@@ -86,6 +86,7 @@ def crawl_data_from_sources():
             except Exception as e:
                 print(f"Failed to process data source {data_source.get('name', 'unknown')}: {e}")
                 continue
+            
         return output_paths
     
     except (yaml.YAMLError, FileNotFoundError) as e:

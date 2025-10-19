@@ -77,19 +77,44 @@ download_binance_csv = PythonOperator(
     python_callable=crawl_data_from_sources,
 )
 
+# upload_to_minio_storage = PythonOperator(
+#     dag=dag_1,
+#     task_id='upload_to_minio',
+#     python_callable=up_to_minio,
+#     op_kwargs={
+#         # 'client_files': 'temp/BTCUSDT-1s-2025-09.csv',
+#         'client_files': '{{ ti.xcom_pull(task_ids="download_binance_csv") }}', 
+#         # 'server_files': 'BTCUSDT-1s-2025-09.csv',
+#         'server_files': '{{ [path.split("/")[-1] for path in ti.xcom_pull(task_ids="download_binance_csv")] }}',
+#         'bucket_name': 'minio-ngrok-bucket'
+#     }
+# )
+
+def extract_filenames(**kwargs):
+    """Extract base file names from the client file paths."""
+    ti = kwargs['ti']
+    client_files = ti.xcom_pull(task_ids='download_binance_csv')
+    if not isinstance(client_files, list):
+        client_files = [client_files]
+    server_files = [os.path.basename(path) for path in client_files]
+    return server_files
+
+extract_filenames_task = PythonOperator(
+    dag=dag_1,
+    task_id='extract_filenames',
+    python_callable=extract_filenames,
+)
+
 upload_to_minio_storage = PythonOperator(
     dag=dag_1,
     task_id='upload_to_minio',
     python_callable=up_to_minio,
     op_kwargs={
-        # 'client_files': 'temp/BTCUSDT-1s-2025-09.csv',
-        'client_files': '{{ ti.xcom_pull(task_ids="download_binance_csv") }}', 
-        # 'server_files': 'BTCUSDT-1s-2025-09.csv',
-        'server_files': '{{ [path.split("/")[-1] for path in ti.xcom_pull(task_ids="download_binance_csv")] }}',
+        'client_files': '{{ ti.xcom_pull(task_ids="download_binance_csv") }}',
+        'server_files': '{{ ti.xcom_pull(task_ids="extract_filenames") }}',
         'bucket_name': 'minio-ngrok-bucket'
     }
 )
-
 
 # ========================================================================== #
 #                                  ETL DAG                                   #
