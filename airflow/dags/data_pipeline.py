@@ -89,16 +89,24 @@ download_binance_csv = PythonOperator(
 #     }
 # )
 
+def upload_to_minio_wrapper(**kwargs):
+    ti = kwargs['ti']
+    xcom_value = ti.xcom_pull(task_ids='download_binance_csv')
+    logging.info(f"XCom value from download_binance_csv: {xcom_value}")
+    
+    if not isinstance(xcom_value, list) or len(xcom_value) != 2:
+        raise ValueError(f"Expected XCom to return a list of two lists, got: {xcom_value}")
+    
+    client_files, server_files = xcom_value
+    if not client_files or not server_files:
+        raise ValueError("Client files or server files are empty")
+    
+    return up_to_minio(client_files=client_files, server_files=server_files, bucket_name='minio-ngrok-bucket')
 
 upload_to_minio_storage = PythonOperator(
     dag=dag_1,
     task_id='upload_to_minio',
-    python_callable=up_to_minio,
-    op_kwargs={
-        'client_files': '{{ ti.xcom_pull(task_ids="download_binance_csv")[0] }}',
-        'server_files': '{{ ti.xcom_pull(task_ids="download_binance_csv")[1] }}',
-        'bucket_name': 'minio-ngrok-bucket'
-    }
+    python_callable=upload_to_minio_wrapper,
 )
 
 # ========================================================================== #
