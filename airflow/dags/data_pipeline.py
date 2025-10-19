@@ -71,38 +71,27 @@ dag_4 = DAG(
 #                       Download and Save to MinIO DAG                       #
 # ========================================================================== #
 
+def define_server_filenames(**kwargs):
+    """Extract base file names from the client file paths."""
+    ti = kwargs['ti']
+    client_files = ti.xcom_pull(task_ids='download_binance_csv')
+    # logger.info(f"extract_filenames received client_files: {client_files}")
+    if not isinstance(client_files, list):
+        client_files = [client_files]
+    server_files = [os.path.basename(path) for path in client_files]
+    # logger.info(f"extract_filenames returning server_files: {server_files}")
+    return server_files
+
 download_binance_csv = PythonOperator(
     dag=dag_1,
     task_id='download_binance_csv',
     python_callable=crawl_data_from_sources,
 )
 
-# upload_to_minio_storage = PythonOperator(
-#     dag=dag_1,
-#     task_id='upload_to_minio',
-#     python_callable=up_to_minio,
-#     op_kwargs={
-#         # 'client_files': 'temp/BTCUSDT-1s-2025-09.csv',
-#         'client_files': '{{ ti.xcom_pull(task_ids="download_binance_csv") }}', 
-#         # 'server_files': 'BTCUSDT-1s-2025-09.csv',
-#         'server_files': '{{ [path.split("/")[-1] for path in ti.xcom_pull(task_ids="download_binance_csv")] }}',
-#         'bucket_name': 'minio-ngrok-bucket'
-#     }
-# )
-
-def extract_filenames(**kwargs):
-    """Extract base file names from the client file paths."""
-    ti = kwargs['ti']
-    client_files = ti.xcom_pull(task_ids='download_binance_csv')
-    if not isinstance(client_files, list):
-        client_files = [client_files]
-    server_files = [os.path.basename(path) for path in client_files]
-    return server_files
-
 extract_filenames_task = PythonOperator(
     dag=dag_1,
     task_id='extract_filenames',
-    python_callable=extract_filenames,
+    python_callable=define_server_filenames,
 )
 
 upload_to_minio_storage = PythonOperator(
@@ -334,7 +323,7 @@ export_duckdb_to_csv = PythonOperator(
     dag=dag_4
 )
 
-download_binance_csv >> upload_to_minio_storage
+download_binance_csv >> extract_filenames_task >> upload_to_minio_storage
 # download_binance_csv >> extract_filenames_task >> upload_to_minio_storage
 extract_data >> transform_data >> push_to_warehouse
 train_lstm >> metric_and_predict_lstm

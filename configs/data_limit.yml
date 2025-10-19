@@ -1,3 +1,4 @@
 - name: BTCUSDT-1s
   limit:
+    - "2025-08"
     - "2025-09"

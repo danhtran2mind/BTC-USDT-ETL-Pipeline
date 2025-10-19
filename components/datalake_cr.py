@@ -1,5 +1,6 @@
 import os
 import sys
+import ast
 
 # Add the project root directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -7,7 +8,18 @@ from minio_api.client import sign_in, upload_file, download_file, create_bucket,
 
 def up_to_minio(client_files, server_files, bucket_name="minio-ngrok-bucket"):
     """Upload the local CSV file to MinIO."""
-
+    # Convert stringified lists to actual lists if necessary
+    if isinstance(client_files, str):
+        try:
+            client_files = ast.literal_eval(client_files)
+        except (ValueError, SyntaxError) as e:
+            raise ValueError(f"Failed to parse client_files as a list: {client_files}, error: {e}")
+    if isinstance(server_files, str):
+        try:
+            server_files = ast.literal_eval(server_files)
+        except (ValueError, SyntaxError) as e:
+            raise ValueError(f"Failed to parse server_files as a list: {server_files}, error: {e}")
+             
     for client_file, server_file in zip(client_files, server_files):
         # Check if local file exists
         if not os.path.exists(client_file):
