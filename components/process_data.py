@@ -7,6 +7,7 @@ import os
 import sys
 import shutil
 import pandas as pd
+import ast
 
 # Add the project root directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -60,18 +61,23 @@ def extract_from_minio(bucket_name="minio-ngrok-bucket",
                        file_names=["BTCUSDT-1s-2025-09.csv"], 
                        temp_file_paths=["temp/minio_extracted.csv"]):
     minio_client = sign_in()
-    temp_file_paths = []
+    out_temp_file_paths = []
     for file_name, temp_file_path in zip(file_names, temp_file_paths):
         csv_lines = get_minio_data(minio_client, bucket_name, file_name)
         if not csv_lines:
             raise ValueError(f"No data retrieved from MinIO for bucket {bucket_name}, file {file_name}")
         
         os.makedirs(os.path.dirname(temp_file_path), exist_ok=True)
-        with open(temp_file_path, 'w') as f:
-            f.write('\n'.join(csv_lines))
-        temp_file_paths.append(temp_file_path)
+        # with open(temp_file_path, 'w') as f:
+        #     f.write('\n'.join(csv_lines))
+
+        # Convert CSV lines to DataFrame and write to parquet
+        df = pd.read_csv(pd.compat.StringIO('\n'.join(csv_lines)))
+        df.to_parquet(temp_file_path, index=False)
+
+        out_temp_file_paths.append(temp_file_path)
     
-    return temp_file_paths
+    return out_temp_file_paths
 
 def transform_financial_data(csv_file_paths, 
                             temp_parquet_path="temp/temp_parquet_chunks", 
@@ -95,7 +101,13 @@ def transform_financial_data(csv_file_paths,
             StructField("Ignore", IntegerType(), True)
         ])
 
-        output_parquet_paths = []
+        # output_parquet_paths = []
+        if isinstance(csv_file_paths, str):
+            try:
+                csv_file_paths = ast.literal_eval(csv_file_paths)
+            except (ValueError, SyntaxError) as e:
+                raise ValueError(f"Failed to parse server_files as a list: {csv_file_paths}, error: {e}")
+
         for csv_file_path in csv_file_paths:
             # Create DataFrame using create_dataframe_from_csv
             df = create_dataframe_from_csv(spark, csv_file_path, schema, temp_parquet_path)
@@ -113,11 +125,11 @@ def transform_financial_data(csv_file_paths,
                 raise FileNotFoundError(f"Parquet directory {output_parquet_path} was not created or is not a directory.")
             else:
                 print(f"Verified: Parquet directory exists at {output_parquet_path}")
-            output_parquet_paths.append(output_parquet_path)
+            # output_parquet_paths.append(output_parquet_path)
 
         # name_output_parquet_paths = [os.path.basename(path) for path in output_parquet_paths]
         
-        return output_parquet_paths#, name_output_parquet_paths
+        return output_parquet_path#, name_output_parquet_paths
     
     except Exception as e:
         print(f"Error in transform_financial_data: {e}")

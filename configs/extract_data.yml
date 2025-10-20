@@ -1,3 +1,4 @@
 files:
   - BTCUSDT-1s-2025-08.csv
   - BTCUSDT-1s-2025-09.csv
+storage_folder: temp

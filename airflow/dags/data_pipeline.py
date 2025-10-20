@@ -14,6 +14,7 @@ from sklearn.metrics import mean_squared_error
 from tensorflow import keras
 import pickle
 import logging
+import ast
 
 # Add the project root directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
@@ -109,13 +110,14 @@ upload_to_minio_storage = PythonOperator(
 #                                  ETL DAG                                   #
 # ========================================================================== #
 
-def load_extract_config():
+def load_extract_config(storage_folder='temp'):
     """Load file names from extract_data.yml and generate UUID-based temp file paths."""
     config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'configs', 'extract_data.yml')
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
     file_names = config.get('files', [])
-    temp_file_paths = [os.path.join('temp', f"{str(uuid.uuid4())}.csv") for _ in file_names]
+    storage_folder = config.get('storage_folder', storage_folder)
+    temp_file_paths = [os.path.join(storage_folder, f"{str(uuid.uuid4())}.csv") for _ in file_names]
     return file_names, temp_file_paths
 
 extract_data = PythonOperator(
@@ -134,7 +136,7 @@ transform_data = PythonOperator(
     task_id='transform_data',
     python_callable=transform_financial_data,
     op_kwargs={
-        'csv_file_path': '{{ ti.xcom_pull(task_ids="extract_data") }}',
+        'csv_file_paths': '{{ ti.xcom_pull(task_ids="extract_data") }}',
         'temp_parquet_path': 'temp/temp_parquet_chunks',
         'output_parquet_path': 'temp/aggregated_output'
     }
@@ -155,9 +157,17 @@ push_to_warehouse = PythonOperator(
 # ========================================================================== #
 
 def train_lstm_model(**kwargs):
-    ti = kwargs['ti']
+    # ti = kwargs['ti']
     # parquet_paths = ti.xcom_pull(task_ids='extract_data', dag_id='etl_pipeline')
-    parquet_paths = ti.xcom_pull(task_ids='transform_data', dag_id='etl_pipeline')
+    # parquet_paths = ti.xcom_pull(task_ids='transform_data', dag_id='etl_pipeline')[1]
+    parquet_paths = load_extract_config()[1]
+    if isinstance(parquet_paths, str):
+        try:
+            parquet_paths = ast.literal_eval(parquet_paths)
+        except (ValueError, SyntaxError) as e:
+            raise ValueError(f"Failed to parse server_files as a list: {parquet_paths}, error: {e}")
+
+    print("parquet_paths: ", parquet_paths)
     all_df = pd.DataFrame()
     for parquet_path in parquet_paths:
         # Generate unique file names
