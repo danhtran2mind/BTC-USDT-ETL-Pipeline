@@ -117,8 +117,8 @@ def load_extract_config(storage_folder='temp'):
         config = yaml.safe_load(file)
     file_names = config.get('files', [])
     storage_folder = config.get('storage_folder', storage_folder)
-    temp_file_paths = [os.path.join(storage_folder, f"{str(uuid.uuid4())}.csv") for _ in file_names]
-    return file_names, temp_file_paths
+    # temp_file_paths = [os.path.join(storage_folder, f"{str(uuid.uuid4())}.csv") for _ in file_names]
+    return file_names#, temp_file_paths
 
 extract_data = PythonOperator(
     dag=dag_2,
@@ -126,8 +126,8 @@ extract_data = PythonOperator(
     python_callable=extract_from_minio,
     op_kwargs={
         'bucket_name': 'minio-ngrok-bucket',
-        'file_names': load_extract_config()[0],
-        'temp_file_paths': load_extract_config()[1]
+        'file_names': load_extract_config(),
+        # 'temp_file_paths': load_extract_config()[1]
     }
 )
 
@@ -160,7 +160,8 @@ def train_lstm_model(**kwargs):
     # ti = kwargs['ti']
     # parquet_paths = ti.xcom_pull(task_ids='extract_data', dag_id='etl_pipeline')
     # parquet_paths = ti.xcom_pull(task_ids='transform_data', dag_id='etl_pipeline')[1]
-    parquet_paths = load_extract_config()[1]
+    parquet_paths = load_extract_config()
+    parquet_paths = [f"temp/extracted_from_minio/{el.split('.')[0]}" + '.parquet' for el in parquet_paths]
     if isinstance(parquet_paths, str):
         try:
             parquet_paths = ast.literal_eval(parquet_paths)

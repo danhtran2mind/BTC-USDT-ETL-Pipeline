@@ -3,21 +3,74 @@ import zipfile
 import io
 import os
 import yaml
+import pandas as pd
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-def download_and_extract_binance_data(url: str, output_path: str = "temp/input.csv") -> None:
+def add_column_headers(csv_data: bytes, expected_columns: list) -> bytes:
+
     try:
+        # Read CSV data into a DataFrame without headers
+        df = pd.read_csv(io.BytesIO(csv_data), header=None)
+        
+        # Validate column count
+        if len(df.columns) != len(expected_columns):
+            raise ValueError(
+                f"CSV has {len(df.columns)} columns, expected {len(expected_columns)}"
+            )
+        
+        # Assign column names
+        df.columns = expected_columns
+        
+        # Convert DataFrame back to CSV bytes with headers
+        csv_buffer = io.StringIO()
+        df.to_csv(csv_buffer, index=False)
+        return csv_buffer.getvalue().encode('utf-8')
+    
+    except pd.errors.ParserError as e:
+        raise Exception(f"Failed to parse CSV data: {e}")
+    except Exception as e:
+        raise Exception(f"Failed to process CSV with headers: {e}")
+
+def download_and_extract_binance_data(url: str, output_path: str = "temp/input.csv") -> pd.DataFrame:
+
+    expected_columns = [
+        "Open time", "Open", "High", "Low", "Close", "Volume",
+        "Close time", "Quote asset volume", "Number of trades",
+        "Taker buy base asset volume", "Taker buy quote asset volume", "Ignore"
+    ]
+    
+    try:
+        # Download the file
         response = requests.get(url, timeout=10)
         response.raise_for_status()  # Raise an exception for non-200 status codes
 
+        # Extract the CSV from the ZIP
         with io.BytesIO(response.content) as zip_file:
             with zipfile.ZipFile(zip_file, 'r') as zip_ref:
                 csv_file_name = zip_ref.namelist()[0]
+                # Read the CSV content from the ZIP
+                csv_data = zip_ref.read(csv_file_name)
+                
+                # Add column headers
+                modified_csv_data = add_column_headers(csv_data, expected_columns)
+                
+                # Write the modified CSV to output_path
                 with open(output_path, 'wb') as output_file:
-                    output_file.write(zip_ref.read(csv_file_name))
+                    output_file.write(modified_csv_data)
+
         print(f"Successfully downloaded and extracted data to {output_path}")
+
+        # Load the saved CSV into a DataFrame for return
+        df = pd.read_csv(output_path)
+        
+        # Optional: Convert timestamps to datetime
+        df["Open time"] = pd.to_datetime(df["Open time"], unit="ms")
+        df["Close time"] = pd.to_datetime(df["Close time"], unit="ms")
+        
+        print("CSV structure validated and headers added successfully")
+        return df
 
     except requests.RequestException as e:
         raise Exception(f"Failed to download file from {url}: {e}")
@@ -25,6 +78,8 @@ def download_and_extract_binance_data(url: str, output_path: str = "temp/input.c
         raise Exception(f"Invalid ZIP file: {e}")
     except IOError as e:
         raise Exception(f"Failed to write to {output_path}: {e}")
+    except Exception as e:
+        raise Exception(f"Failed during processing: {e}")
 
 def crawl_data_from_sources():
     try:
