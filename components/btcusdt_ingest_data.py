@@ -34,7 +34,6 @@ def add_column_headers(csv_data: bytes, expected_columns: list) -> bytes:
         raise Exception(f"Failed to process CSV with headers: {e}")
 
 def download_and_extract_binance_data(url: str, output_path: str = "temp/input.csv") -> pd.DataFrame:
-
     expected_columns = [
         "Open time", "Open", "High", "Low", "Close", "Volume",
         "Close time", "Quote asset volume", "Number of trades",
@@ -42,33 +41,37 @@ def download_and_extract_binance_data(url: str, output_path: str = "temp/input.c
     ]
     
     try:
-        # Download the file
         response = requests.get(url, timeout=10)
-        response.raise_for_status()  # Raise an exception for non-200 status codes
+        response.raise_for_status()
 
-        # Extract the CSV from the ZIP
         with io.BytesIO(response.content) as zip_file:
             with zipfile.ZipFile(zip_file, 'r') as zip_ref:
                 csv_file_name = zip_ref.namelist()[0]
-                # Read the CSV content from the ZIP
                 csv_data = zip_ref.read(csv_file_name)
-                
-                # Add column headers
                 modified_csv_data = add_column_headers(csv_data, expected_columns)
-                
-                # Write the modified CSV to output_path
                 with open(output_path, 'wb') as output_file:
                     output_file.write(modified_csv_data)
 
         print(f"Successfully downloaded and extracted data to {output_path}")
 
-        # Load the saved CSV into a DataFrame for return
+        # Load the saved CSV into a DataFrame
         df = pd.read_csv(output_path)
         
-        # Optional: Convert timestamps to datetime
-        df["Open time"] = pd.to_datetime(df["Open time"], unit="ms")
-        df["Close time"] = pd.to_datetime(df["Close time"], unit="ms")
-        
+        # Print the first few rows to inspect the data
+        print("First few rows of the CSV:")
+        print(df.head())
+        print("Open time and Close time dtypes:", df["Open time"].dtype, df["Close time"].dtype)
+
+        # Check for invalid or out-of-range timestamps
+        try:
+            df["Open time"] = pd.to_datetime(df["Open time"], unit="ms", errors="coerce")
+            df["Close time"] = pd.to_datetime(df["Close time"], unit="ms", errors="coerce")
+        except Exception as e:
+            print(f"Timestamp conversion error: {e}")
+            print("Invalid Open time values:", df[df["Open time"].isna()])
+            print("Invalid Close time values:", df[df["Close time"].isna()])
+            raise
+
         print("CSV structure validated and headers added successfully")
         return df
 
