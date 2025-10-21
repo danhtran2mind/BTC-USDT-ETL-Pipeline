@@ -48,9 +48,9 @@ def download_and_extract_binance_data(url: str, output_path: str = "temp/input.c
             with zipfile.ZipFile(zip_file, 'r') as zip_ref:
                 csv_file_name = zip_ref.namelist()[0]
                 csv_data = zip_ref.read(csv_file_name)
-                modified_csv_data = add_column_headers(csv_data, expected_columns)
+                # csv_data = add_column_headers(csv_data, expected_columns)
                 with open(output_path, 'wb') as output_file:
-                    output_file.write(modified_csv_data)
+                    output_file.write(csv_data)
 
         print(f"Successfully downloaded and extracted data to {output_path}")
 
