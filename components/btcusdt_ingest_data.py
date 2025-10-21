@@ -58,19 +58,19 @@ def download_and_extract_binance_data(url: str, output_path: str = "temp/input.c
         df = pd.read_csv(output_path)
         
         # Print the first few rows to inspect the data
-        print("First few rows of the CSV:")
-        print(df.head())
-        print("Open time and Close time dtypes:", df["Open time"].dtype, df["Close time"].dtype)
+        # print("First few rows of the CSV:")
+        # print(df.head())
+        # print("Open time and Close time dtypes:", df["Open time"].dtype, df["Close time"].dtype)
 
         # Check for invalid or out-of-range timestamps
-        try:
-            df["Open time"] = pd.to_datetime(df["Open time"], unit="ms", errors="coerce")
-            df["Close time"] = pd.to_datetime(df["Close time"], unit="ms", errors="coerce")
-        except Exception as e:
-            print(f"Timestamp conversion error: {e}")
-            print("Invalid Open time values:", df[df["Open time"].isna()])
-            print("Invalid Close time values:", df[df["Close time"].isna()])
-            raise
+        # try:
+        #     df["Open time"] = pd.to_datetime(df["Open time"], unit="ms", errors="coerce")
+        #     df["Close time"] = pd.to_datetime(df["Close time"], unit="ms", errors="coerce")
+        # except Exception as e:
+        #     print(f"Timestamp conversion error: {e}")
+        #     print("Invalid Open time values:", df[df["Open time"].isna()])
+        #     print("Invalid Close time values:", df[df["Close time"].isna()])
+        #     raise
 
         print("CSV structure validated and headers added successfully")
         return df

@@ -120,6 +120,17 @@ def load_extract_config(storage_folder='temp'):
     # temp_file_paths = [os.path.join(storage_folder, f"{str(uuid.uuid4())}.csv") for _ in file_names]
     return file_names#, temp_file_paths
 
+def load_extract_config_2(storage_folder='temp'):
+    """Load file names from extract_data.yml and generate UUID-based temp file paths."""
+    config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'configs', 'extract_data.yml')
+    with open(config_path, 'r') as file:
+        config = yaml.safe_load(file)
+    file_names = config.get('files', [])
+    storage_folder = config.get('storage_folder', storage_folder)
+    temp_file_paths = [os.path.join(storage_folder, "extracted_from_minio", el.replace(".csv", ".parquet")) for el in file_names]
+
+    return file_names#, temp_file_paths
+
 extract_data = PythonOperator(
     dag=dag_2,
     task_id='extract_data',
@@ -160,7 +171,7 @@ def train_lstm_model(**kwargs):
     # ti = kwargs['ti']
     # parquet_paths = ti.xcom_pull(task_ids='extract_data', dag_id='etl_pipeline')
     # parquet_paths = ti.xcom_pull(task_ids='transform_data', dag_id='etl_pipeline')[1]
-    parquet_paths = load_extract_config()
+    parquet_paths = load_extract_config_2()
     parquet_paths = [f"temp/extracted_from_minio/{el.split('.')[0]}" + '.parquet' for el in parquet_paths]
     if isinstance(parquet_paths, str):
         try:

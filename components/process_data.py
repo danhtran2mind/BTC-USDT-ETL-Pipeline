@@ -61,24 +61,27 @@ def resample_dataframe(df, track_each=3600):
 def extract_from_minio(bucket_name="minio-ngrok-bucket", 
                        file_names=["BTCUSDT-1s-2025-09.csv"]):
     minio_client = sign_in()
-    out_pqrquet_file_paths = []
+    out_parquet_file_paths = []
+    headers = [
+        "Open time", "Open", "High", "Low", "Close", "Volume",
+        "Close time", "Quote asset volume", "Number of trades",
+        "Taker buy base asset volume", "Taker buy quote asset volume", "Ignore"
+    ]
+    
     for file_name in file_names:
         csv_lines = get_minio_data(minio_client, bucket_name, file_name)
         if not csv_lines:
             raise ValueError(f"No data retrieved from MinIO for bucket {bucket_name}, file {file_name}")
         temp_parquet_path = f"temp/extracted_from_minio/{os.path.splitext(os.path.basename(file_name))[0]}.parquet"
         os.makedirs(os.path.dirname(temp_parquet_path), exist_ok=True)
-        # with open(temp_file_path, 'w') as f:
-        #     f.write('\n'.join(csv_lines))
-
-        # Convert CSV lines to DataFrame and write to parquet
-        df = pd.read_csv(io.StringIO('\n'.join(csv_lines)))
-        # print("df.columns========================", df.columns)
+        
+        # Convert CSV lines to DataFrame with specified headers
+        df = pd.read_csv(io.StringIO('\n'.join(csv_lines)), names=headers)
         df.to_parquet(temp_parquet_path, index=False)  
-
-        out_pqrquet_file_paths.append(temp_parquet_path)
+        
+        out_parquet_file_paths.append(temp_parquet_path)
     
-    return out_pqrquet_file_paths#, out_temp_file_paths
+    return out_parquet_file_paths
 
 def transform_financial_data(csv_file_paths, 
                             temp_parquet_path="temp/temp_parquet_chunks", 
@@ -118,7 +121,8 @@ def transform_financial_data(csv_file_paths,
             
             # Save aggregated DataFrame to a temporary Parquet directory
             os.makedirs(os.path.dirname(output_parquet_path), exist_ok=True)
-            aggregated_df.write.mode("overwrite").parquet(output_parquet_path)
+            # aggregated_df.write.mode("overwrite").parquet(output_parquet_path)
+            aggregated_df.write.mode("append").parquet(output_parquet_path)
             print(f"Saved aggregated DataFrame to {output_parquet_path}")
             
             # Verify that the Parquet directory exists
