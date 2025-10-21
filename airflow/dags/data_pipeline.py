@@ -147,7 +147,7 @@ transform_data = PythonOperator(
     task_id='transform_data',
     python_callable=transform_financial_data,
     op_kwargs={
-        'csv_file_paths': '{{ ti.xcom_pull(task_ids="extract_data") }}',
+        'parquet_file_paths': '{{ ti.xcom_pull(task_ids="extract_data") }}',
         'temp_parquet_path': 'temp/temp_parquet_chunks',
         'output_parquet_path': 'temp/aggregated_output'
     }
