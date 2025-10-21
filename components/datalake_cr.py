@@ -30,6 +30,7 @@ def up_to_minio(client_files, server_files, bucket_name="minio-ngrok-bucket"):
         create_bucket(minio_client, bucket_name)
 
         # Upload file
+        print("Uploading file to MinIO:", client_file, "as", server_file)
         upload_file(minio_client, bucket_name, client_file, server_file)
 
 if __name__ == "__main__":
