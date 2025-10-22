@@ -1,0 +1,17 @@
+# LSTM / BiLSTM / GRU / Custom Model Hyperparameters
+architecture: bilstm  # Options: lstm, bilstm, gru, custom
+seq_length: 60 # Number of time steps to look back
+units: 100
+layers: 2
+dropout: 0.2
+activation: tanh
+
+optimizer: adam
+loss: mse
+epochs: 50
+batch_size: 64
+patience: 10
+
+train_ratio: 0.8
+val_ratio: 0.1
+test_ratio: 0.1

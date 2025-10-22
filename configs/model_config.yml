@@ -1,0 +1,42 @@
+# =============================================================================
+# Unified Model & Output Configuration
+# =============================================================================
+
+model:
+  architecture: bilstm        # lstm | bilstm | gru | custom
+  units: 100
+  layers: 2
+  dropout: 0.2
+  activation: tanh
+  optimizer: adam
+  loss: mse
+
+training:
+  epochs: 50
+  batch_size: 64
+  patience: 10
+
+data:
+  seq_length: 60
+  train_ratio: 0.80
+  val_ratio: 0.10
+  test_ratio: 0.10
+
+output:
+  checkpoints:
+    model_path_template: "ckpts/lstm_model_{datetime}.keras"
+    scaler_path_template: "ckpts/scaler_{datetime}.pkl"
+
+  metrics:
+    metrics_dir: "metrics"
+    metrics_prefix: "lstm_metrics"
+    metrics_ext: ".csv"
+
+  predictions:
+    pred_dir: "metrics"
+    pred_prefix: "prediction"
+    pred_ext: ".txt"
+
+versioning:
+  use_datetime: true
+  datetime_format: "%Y-%m-%d-%H-%M-%S"   # → 2025-10-22-14-30-22
