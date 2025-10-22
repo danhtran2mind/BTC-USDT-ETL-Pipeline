@@ -4,16 +4,16 @@
 
 model:
   architecture: bilstm        # lstm | bilstm | gru | custom
-  units: 100
-  layers: 2
+  units: 1 #100
+  layers: 1 #2
   dropout: 0.2
   activation: tanh
   optimizer: adam
   loss: mse
 
 training:
-  epochs: 50
-  batch_size: 64
+  epochs: 1
+  batch_size: 1024
   patience: 10
 
 data:

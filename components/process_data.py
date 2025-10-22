@@ -83,7 +83,7 @@ def extract_from_minio(bucket_name="minio-ngrok-bucket",
     
     return out_parquet_file_paths
 
-def transform_financial_data(csv_file_paths, 
+def transform_financial_data(parquet_file_paths, 
                             temp_parquet_path="temp/temp_parquet_chunks", 
                             output_parquet_path="temp/aggregated_output"):
     spark = initialize_spark_session()
@@ -99,22 +99,22 @@ def transform_financial_data(csv_file_paths,
             StructField("Volume", DoubleType(), True),
             StructField("Close time", LongType(), True),
             StructField("Quote asset volume", DoubleType(), True),
-            StructField("Number of trades", IntegerType(), True),
+            StructField("Number of trades", LongType(), True),
             StructField("Taker buy base asset volume", DoubleType(), True),
             StructField("Taker buy quote asset volume", DoubleType(), True),
-            StructField("Ignore", IntegerType(), True)
+            StructField("Ignore", LongType(), True)
         ])
 
         # output_parquet_paths = []
-        if isinstance(csv_file_paths, str):
+        if isinstance(parquet_file_paths, str):
             try:
-                csv_file_paths = ast.literal_eval(csv_file_paths)
+                parquet_file_paths = ast.literal_eval(parquet_file_paths)
             except (ValueError, SyntaxError) as e:
-                raise ValueError(f"Failed to parse server_files as a list: {csv_file_paths}, error: {e}")
+                raise ValueError(f"Failed to parse server_files as a list: {parquet_file_paths}, error: {e}")
 
-        for csv_file_path in csv_file_paths:
+        for parquet_file_path in parquet_file_paths:
             # Create DataFrame using create_dataframe_from_csv
-            df = create_dataframe_from_csv(spark, csv_file_path, schema, temp_parquet_path)
+            df = create_dataframe_from_csv(spark, parquet_file_path, schema, temp_parquet_path)
             print("Created Spark DataFrame from CSV file.")
             aggregated_df = resample_dataframe(df)
             print("Resampled DataFrame with OHLC aggregations.")

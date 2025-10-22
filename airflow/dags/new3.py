@@ -100,10 +100,14 @@ default_args = {
     'retry_delay': timedelta(minutes=5),
 }
 
-dag_1 = DAG('crawl_to_minio', default_args=default_args, schedule_interval='@monthly', max_active_runs=1, catchup=False)
-dag_2 = DAG('etl_to_duckdb', default_args=default_args, schedule_interval='@monthly', max_active_runs=1, catchup=False)
-dag_3 = DAG('lstm_forecast', default_args=default_args, schedule_interval='@monthly', max_active_runs=1, catchup=False)
-dag_4 = DAG('duckdb_to_csv_export', default_args=default_args, schedule_interval='@monthly', max_active_runs=1, catchup=False)
+dag_1 = DAG('crawl_to_minio', default_args=default_args, schedule_interval='@monthly', 
+            max_active_runs=1, catchup=False)
+dag_2 = DAG('etl_to_duckdb', default_args=default_args, schedule_interval='@monthly', 
+            max_active_runs=1, catchup=False)
+dag_3 = DAG('lstm_forecast', default_args=default_args, schedule_interval='@monthly', 
+            max_active_runs=1, catchup=False)
+dag_4 = DAG('duckdb_to_csv_export', default_args=default_args, schedule_interval='@monthly', 
+            max_active_runs=1, catchup=False)
 
 # ========================================================================== #
 #                          DAG 1: Crawl to MinIO
