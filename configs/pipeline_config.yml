@@ -1,0 +1,8 @@
+minio:
+  bucket_name: minio-ngrok-bucket
+paths:
+  temp_parquet_path: temp/temp_parquet_chunks
+  output_parquet_path: temp/aggregated_output
+  duckdb_path: duckdb_databases/financial_data.db
+  output_csv_path: analytics/financial_data.csv
+  parquet_folder: temp/extracted_from_minio

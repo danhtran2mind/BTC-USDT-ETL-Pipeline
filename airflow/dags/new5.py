@@ -1,5 +1,5 @@
 # ========================================================================== #
-#                                new3.py
+#                                new4.py
 #  BTC/USDT Forecasting Pipeline – Datetime Naming + Enhanced Metrics
 # ========================================================================== #
 
@@ -36,6 +36,43 @@ def load_config():
     config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'configs', 'model_config.yml')
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)
+
+# ========================================================================== #
+#                             SHARED DATA LOADER
+# ========================================================================== #
+
+def create_data_loader(parquet_paths, scaler, seq_length, batch_size):
+    """
+    Create a tf.data.Dataset from Parquet files for LSTM training or evaluation.
+    
+    Args:
+        parquet_paths (list): List of paths to Parquet files.
+        scaler (MinMaxScaler): Scaler fitted on the data.
+        seq_length (int): Length of input sequences.
+        batch_size (int): Batch size for the dataset.
+    
+    Returns:
+        tf.data.Dataset: Dataset yielding (sequence, target) pairs.
+    """
+    import pyarrow.parquet as pq
+    
+    def _scaled_generator():
+        for path in parquet_paths:
+            if not os.path.exists(path):
+                continue
+            parquet_file = pq.ParquetFile(path)
+            for batch in parquet_file.iter_batches(batch_size=10_000, columns=['Close']):
+                chunk = batch.to_pandas()
+                prices = chunk['Close'].astype('float32').values.reshape(-1, 1)
+                scaled = scaler.transform(prices)
+                for j in range(len(scaled) - seq_length):
+                    yield scaled[j:j + seq_length], scaled[j + seq_length]
+    
+    return tf.data.Dataset.from_generator(
+        _scaled_generator,
+        output_types=(tf.float32, tf.float32),
+        output_shapes=((seq_length, 1), (1,))
+    ).batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
 # ========================================================================== #
 #                              MODEL BUILDER
@@ -186,7 +223,6 @@ def train_lstm_model(**kwargs):
         logging.warning("No GPU detected. Training on CPU, which may be slower.")
     else:
         logging.info(f"GPUs detected: {len(gpus)}. Using CUDA for training.")
-        # Optional: Set memory growth to prevent TensorFlow from allocating all GPU memory
         for gpu in gpus:
             tf.config.experimental.set_memory_growth(gpu, True)
 
@@ -197,10 +233,12 @@ def train_lstm_model(**kwargs):
     out_cfg = cfg['output']
     ver_cfg = cfg['versioning']
 
-    # === Generate datetime: 2025-10-22-14-30-22 ===
-    dt_str = datetime.now().strftime(ver_cfg['datetime_format'])
-    model_path = out_cfg['checkpoints']['model_path_template'].format(datetime=dt_str)
-    scaler_path = out_cfg['checkpoints']['scaler_path_template'].format(datetime=dt_str)
+    # === Generate datetime with timezone: 2025-10-23-13-32-51-(+07) ===
+    from datetime import datetime
+    dt = datetime.now().astimezone()
+    dt_str = dt.strftime(ver_cfg['datetime_format']) + f"-({dt.strftime('%z').replace('+', '+').replace('-', '-')[:3]})"
+    model_path = os.path.join(out_cfg['checkpoints']['model_dir'], f"model_{dt_str}.h5")
+    scaler_path = os.path.join(out_cfg['checkpoints']['scaler_dir'], f"scaler_{dt_str}.pkl")
 
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
 
@@ -223,21 +261,35 @@ def train_lstm_model(**kwargs):
 
     dataset_merge = " + ".join(used_files) if used_files else "none"
 
-    prices = all_df['Close'].astype(float).values.reshape(-1, 1)
-
     # === Scale ===
     scaler = MinMaxScaler()
+    prices = all_df['Close'].astype(float).values.reshape(-1, 1)
     prices_scaled = scaler.fit_transform(prices)
 
-    # === Sequences ===
+    # === Create dataset ===
     seq_length = data_cfg['seq_length']
-    X, y = create_sequences(prices_scaled, seq_length)
+    batch_size = train_cfg['batch_size']
+    dataset = create_data_loader(parquet_paths, scaler, seq_length, batch_size)
 
-    # === Split ===
-    train_idx = int(len(X) * data_cfg['train_ratio'])
-    val_idx = int(len(X) * (data_cfg['train_ratio'] + data_cfg['val_ratio']))
-    X_train, X_val, X_test = X[:train_idx], X[train_idx:val_idx], X[val_idx:]
-    y_train, y_val, y_test = y[:train_idx], y[train_idx:val_idx], y[val_idx:]
+    # === Calculate splits ===
+    total_seqs = 0
+    for path in parquet_paths:
+        if not os.path.exists(path):
+            continue
+        df = pd.read_parquet(path, columns=['Close'])
+        total_seqs += max(0, len(df) - seq_length)
+
+    if total_seqs == 0:
+        raise ValueError("Not enough sequences for training.")
+
+    steps_total = (total_seqs + batch_size - 1) // batch_size
+    steps_train = int(steps_total * data_cfg['train_ratio'])
+    steps_val = int(steps_total * data_cfg['val_ratio'])
+    steps_test = steps_total - steps_train - steps_val
+
+    train_ds = dataset.take(steps_train)
+    val_ds = dataset.skip(steps_train).take(steps_val)
+    test_ds = dataset.skip(steps_train + steps_val)
 
     # === Build model ===
     model = build_model_from_config(seq_length, cfg)
@@ -251,12 +303,10 @@ def train_lstm_model(**kwargs):
     )
 
     # === Train with GPU ===
-    # TensorFlow automatically uses GPU if available; no additional configuration needed for training
     model.fit(
-        X_train, y_train,
+        train_ds,
         epochs=train_cfg['epochs'],
-        batch_size=train_cfg['batch_size'],
-        validation_data=(X_val, y_val),
+        validation_data=val_ds,
         callbacks=[checkpoint_cb, early_stop],
         verbose=2
     )
@@ -266,11 +316,17 @@ def train_lstm_model(**kwargs):
         pickle.dump(scaler, f)
 
     # === Test eval ===
-    pred_scaled = model.predict(X_test, verbose=0)
-    pred = scaler.inverse_transform(pred_scaled)
-    true = scaler.inverse_transform(y_test)
-    test_rmse = np.sqrt(mean_squared_error(true, pred))
-    test_mae = mean_absolute_error(true, pred)
+    y_true, y_pred = [], []
+    for X, y in test_ds:
+        pred = model.predict(X, verbose=0)
+        y_true.append(y.numpy())
+        y_pred.append(pred)
+    y_true = np.concatenate(y_true)
+    y_pred = np.concatenate(y_pred)
+    y_true_orig = scaler.inverse_transform(y_true)
+    y_pred_orig = scaler.inverse_transform(y_pred)
+    test_rmse = np.sqrt(mean_squared_error(y_true_orig, y_pred_orig))
+    test_mae = mean_absolute_error(y_true_orig, y_pred_orig)
 
     logging.info(f"Test RMSE: {test_rmse:.4f}, MAE: {test_mae:.4f}")
 
@@ -286,12 +342,24 @@ def train_lstm_model(**kwargs):
         'test_mae': float(test_mae)
     }
 
+def model_evaluate(model, scaler,ds):
+    y_true, y_pred = [], []
+    for X, y in ds:
+        pred = model.predict(X, verbose=0)
+        y_true.append(y.numpy())
+        y_pred.append(pred)
+    y_true = np.concatenate(y_true)
+    y_pred = np.concatenate(y_pred)
+    y_true_orig = scaler.inverse_transform(y_true)
+    y_pred_orig = scaler.inverse_transform(y_pred)
+    return np.sqrt(mean_squared_error(y_true_orig, y_pred_orig)), mean_absolute_error(y_true_orig, y_pred_orig)
+
 
 def metric_and_predict_lstm_model(**kwargs):
     ti = kwargs['ti']
     train_result = ti.xcom_pull(task_ids='train_lstm_model')
     if not train_result:
-      raise ValueError("No training result.")
+        raise ValueError("No training result.")
 
     cfg = load_config()
     model_cfg = cfg['model']
@@ -312,31 +380,13 @@ def metric_and_predict_lstm_model(**kwargs):
     model = build_model_from_config(SEQ_LENGTH, cfg)
     model.load_weights(model_path)
 
-    # === Generator: Stream Parquet files using PyArrow row groups ===
-    import pyarrow.parquet as pq
-
-    def _scaled_generator():
-        for path in [f"temp/extracted_from_minio/{el}" for el in load_extract_config_2()]:
-            if not os.path.exists(path):
-                continue
-
-            parquet_file = pq.ParquetFile(path)
-            for i, batch in enumerate(parquet_file.iter_batches(batch_size=10_000, columns=['Close'])):
-                chunk = batch.to_pandas()
-                prices = chunk['Close'].astype('float32').values.reshape(-1, 1)
-                scaled = scaler.transform(prices)
-                for j in range(len(scaled) - SEQ_LENGTH):
-                    yield scaled[j:j + SEQ_LENGTH], scaled[j + SEQ_LENGTH]
-
-    dataset = tf.data.Dataset.from_generator(
-        _scaled_generator,
-        output_types=(tf.float32, tf.float32),
-        output_shapes=((SEQ_LENGTH, 1), (1,))
-    ).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
+    # === Create dataset ===
+    parquet_paths = [f"temp/extracted_from_minio/{el}" for el in load_extract_config_2()]
+    dataset = create_data_loader(parquet_paths, scaler, SEQ_LENGTH, BATCH_SIZE)
 
     # === Count total sequences safely ===
     total_seqs = 0
-    for path in [f"temp/extracted_from_minio/{el}" for el in load_extract_config_2()]:
+    for path in parquet_paths:
         if not os.path.exists(path):
             continue
         df = pd.read_parquet(path, columns=['Close'])
@@ -354,28 +404,17 @@ def metric_and_predict_lstm_model(**kwargs):
     val_ds = dataset.skip(steps_train).take(steps_val)
     test_ds = dataset.skip(steps_train + steps_val)
 
-    def _evaluate(ds):
-        y_true, y_pred = [], []
-        for X, y in ds:
-            pred = model.predict(X, verbose=0)
-            y_true.append(y.numpy())
-            y_pred.append(pred)
-        y_true = np.concatenate(y_true)
-        y_pred = np.concatenate(y_pred)
-        y_true_orig = scaler.inverse_transform(y_true)
-        y_pred_orig = scaler.inverse_transform(y_pred)
-        return np.sqrt(mean_squared_error(y_true_orig, y_pred_orig)), mean_absolute_error(y_true_orig, y_pred_orig)
-
-    # train_rmse, train_mae = _evaluate(train_ds)
-    # val_rmse, val_mae = _evaluate(val_ds)
+    
+    # train_rmse, train_mae = model_evaluate(model, scaler, train_ds)
+    # val_rmse, val_mae = model_evaluate(model, scaler, val_ds)
     train_rmse, train_mae = 1.0, 1.0
     val_rmse, val_mae = 1.0, 1.0 
-    test_rmse, test_mae = _evaluate(test_ds)
+    test_rmse, test_mae = model_evaluate(model, scaler, test_ds)
 
     # === Save Metrics CSV ===
     metrics_path = os.path.join(
         out_cfg['metrics']['metrics_dir'],
-        f"{out_cfg['metrics']['metrics_prefix']}_{dt_str}{out_cfg['metrics']['metrics_ext']}"
+        f"metrics_{dt_str}.csv"
     )
     os.makedirs(out_cfg['metrics']['metrics_dir'], exist_ok=True)
 
@@ -396,7 +435,7 @@ def metric_and_predict_lstm_model(**kwargs):
 
     # === Predict next ===
     last_chunk = None
-    for path in reversed([f"temp/extracted_from_minio/{el}" for el in load_extract_config_2()]):
+    for path in reversed(parquet_paths):
         if os.path.exists(path):
             df_tail = pd.read_parquet(path).tail(SEQ_LENGTH)
             if len(df_tail) >= SEQ_LENGTH:
@@ -412,7 +451,7 @@ def metric_and_predict_lstm_model(**kwargs):
     # === Save prediction TXT ===
     pred_path = os.path.join(
         out_cfg['predictions']['pred_dir'],
-        f"{out_cfg['predictions']['pred_prefix']}_{dt_str}{out_cfg['predictions']['pred_ext']}"
+        f"prediction_{dt_str}.txt"
     )
     with open(pred_path, 'w') as f:
         f.write(f"Model Run: {dt_str}\n")
@@ -433,7 +472,6 @@ def metric_and_predict_lstm_model(**kwargs):
         'prediction_path': pred_path,
         'next_price': float(next_price)
     }
-
 
 train_lstm = PythonOperator(
     task_id='train_lstm_model', 
