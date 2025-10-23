@@ -279,7 +279,7 @@ def metric_and_predict_lstm_model(**kwargs):
     ti = kwargs['ti']
     train_result = ti.xcom_pull(task_ids='train_lstm_model')
     if not train_result:
-        raise ValueError("No training result.")
+      raise ValueError("No training result.")
 
     cfg = load_config()
     model_cfg = cfg['model']
@@ -300,16 +300,21 @@ def metric_and_predict_lstm_model(**kwargs):
     model = build_model_from_config(SEQ_LENGTH, cfg)
     model.load_weights(model_path)
 
-    # === Generator ===
+    # === Generator: Stream Parquet files using PyArrow row groups ===
+    import pyarrow.parquet as pq
+
     def _scaled_generator():
         for path in [f"temp/extracted_from_minio/{el}" for el in load_extract_config_2()]:
             if not os.path.exists(path):
                 continue
-            for chunk in pd.read_parquet(path, columns=['Close'], chunksize=10_000):
+
+            parquet_file = pq.ParquetFile(path)
+            for i, batch in enumerate(parquet_file.iter_batches(batch_size=10_000, columns=['Close'])):
+                chunk = batch.to_pandas()
                 prices = chunk['Close'].astype('float32').values.reshape(-1, 1)
                 scaled = scaler.transform(prices)
-                for i in range(len(scaled) - SEQ_LENGTH):
-                    yield scaled[i:i + SEQ_LENGTH], scaled[i + SEQ_LENGTH]
+                for j in range(len(scaled) - SEQ_LENGTH):
+                    yield scaled[j:j + SEQ_LENGTH], scaled[j + SEQ_LENGTH]
 
     dataset = tf.data.Dataset.from_generator(
         _scaled_generator,
@@ -317,13 +322,16 @@ def metric_and_predict_lstm_model(**kwargs):
         output_shapes=((SEQ_LENGTH, 1), (1,))
     ).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
 
-    total_seqs = sum(
-        max(0, len(pd.read_parquet(p, columns=['Close'])) - SEQ_LENGTH)
-        for p in [f"temp/extracted_from_minio/{el}" for el in load_extract_config_2()]
-        if os.path.exists(p)
-    )
+    # === Count total sequences safely ===
+    total_seqs = 0
+    for path in [f"temp/extracted_from_minio/{el}" for el in load_extract_config_2()]:
+        if not os.path.exists(path):
+            continue
+        df = pd.read_parquet(path, columns=['Close'])
+        total_seqs += max(0, len(df) - SEQ_LENGTH)
+
     if total_seqs == 0:
-        raise ValueError("Not enough sequences.")
+        raise ValueError("Not enough sequences for evaluation.")
 
     steps_total = (total_seqs + BATCH_SIZE - 1) // BATCH_SIZE
     steps_train = int(steps_total * data_cfg['train_ratio'])
@@ -350,7 +358,7 @@ def metric_and_predict_lstm_model(**kwargs):
     val_rmse, val_mae = _evaluate(val_ds)
     test_rmse, test_mae = _evaluate(test_ds)
 
-    # === Save Metrics CSV: model_path, dataset_merge, Split, Metric, Value ===
+    # === Save Metrics CSV ===
     metrics_path = os.path.join(
         out_cfg['metrics']['metrics_dir'],
         f"{out_cfg['metrics']['metrics_prefix']}_{dt_str}{out_cfg['metrics']['metrics_ext']}"
