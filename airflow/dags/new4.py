@@ -179,6 +179,17 @@ push_to_warehouse = PythonOperator(
 # ========================================================================== #
 
 def train_lstm_model(**kwargs):
+    # === Verify GPU Availability ===
+    import tensorflow as tf
+    gpus = tf.config.list_physical_devices('GPU')
+    if not gpus:
+        logging.warning("No GPU detected. Training on CPU, which may be slower.")
+    else:
+        logging.info(f"GPUs detected: {len(gpus)}. Using CUDA for training.")
+        # Optional: Set memory growth to prevent TensorFlow from allocating all GPU memory
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+
     cfg = load_config()
     model_cfg = cfg['model']
     train_cfg = cfg['training']
@@ -239,7 +250,8 @@ def train_lstm_model(**kwargs):
         monitor='val_loss', patience=train_cfg['patience'], restore_best_weights=True
     )
 
-    # === Train ===
+    # === Train with GPU ===
+    # TensorFlow automatically uses GPU if available; no additional configuration needed for training
     model.fit(
         X_train, y_train,
         epochs=train_cfg['epochs'],
