@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import tensorflow as tf
 import pyarrow.parquet as pq
@@ -36,7 +37,8 @@ def create_sequences(data, seq_length):
     
     return X, y
 
-def create_data_loader(parquet_paths: list, scaler: MinMaxScaler, seq_length: int, batch_size: int) -> tf.data.Dataset:
+def create_data_loader(parquet_paths: list, scaler: MinMaxScaler, 
+                       seq_length: int, batch_size: int) -> tf.data.Dataset:
     """Create a tf.data.Dataset from Parquet files for LSTM training or evaluation.
 
     Args:

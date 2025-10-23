@@ -12,8 +12,8 @@ from components.datalake_cr import up_to_minio
 from components.process_data import extract_from_minio, transform_financial_data
 from components.duckdb_api import push_to_duckdb
 from components.duckdb2csv import duckdb_to_csv
-from components.model_training import train_lstm_model
-from components.model_evaluation import metric_and_predict_lstm_model
+from components.model.training import train_lstm_model
+from components.model.evaluation import metric_and_predict_lstm_model
 from components.utils.file_utils import (
     load_extract_config, 
     define_server_filenames, 
