@@ -6,12 +6,22 @@ from sklearn.preprocessing import MinMaxScaler
 import pickle
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from typing import Dict, List, Tuple
+from datetime import datetime, timezone
 import tensorflow as tf
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from components.utils.file_utils import load_extract_config, get_parquet_file_names
-from components.utils.lstm_utils import create_data_loader, build_model_from_config
+from components.model.model_utils import build_model_from_config
+from components.model.data_utils import create_data_loader
+from components.utils.utils import parse_timezone
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S %Z'
+)
+logger = logging.getLogger(__name__)
 
 def model_evaluate(model, scaler: MinMaxScaler, ds: tf.data.Dataset) -> Tuple[float, float]:
     """Evaluate a model on a dataset and return RMSE and MAE.
@@ -150,3 +160,37 @@ def metric_and_predict_lstm_model(**kwargs) -> Dict:
         'prediction_path': pred_path,
         'next_price': float(next_price)
     }
+
+if __name__ == "__main__":
+    logger.info("Running standalone evaluation test")
+    # Simulate training result for testing
+    cfg = load_extract_config('model_config.yml')
+    out_cfg = cfg['output']
+    data_cfg = cfg['data']
+    
+    # Mock training result (adjust paths to match an actual trained model and scaler)
+    mock_train_result = {
+        'model_path': os.path.join(out_cfg['checkpoints']['model_dir'], 
+                                   'model_2025-10-24-18-40-00-(+07).h5'),
+        'model_filename': 'model_2025-10-24-18-40-00-(+07).h5',
+        'scaler_path': os.path.join(out_cfg['checkpoints']['scaler_dir'], 
+                                    'scaler_2025-10-24-18-40-00-(+07).pkl'),
+        'datetime': '2025-10-24-18-40-00-(+07)',
+        'dataset_merge': 'mock_dataset'
+    }
+    'model_path': 'models/checkpoints/model_2025-10-24-11-54-35-().h5', 'model_filename': 'model_2025-10-24-11-54-35-().h5', 'scaler_path': 'models/scalers/scaler_2025-10-24-11-54-35-().pkl', 'datetime': '2025-10-24-11-54-35-()', 'dataset_merge': 'BTCUSDT-1s-2025-08 + BTCUSDT-1s-2025-09'}
+2025-10-24 12:41:08,715 - INFO - Standalone training run completed
+    # Simulate Airflow task instance
+    class MockTaskInstance:
+        def xcom_pull(self, task_ids):
+            return mock_train_result
+    
+    mock_ti = MockTaskInstance()
+    
+    try:
+        result = metric_and_predict_lstm_model(ti=mock_ti)
+        logger.info("Evaluation completed successfully!")
+        logger.info(f"Result: {result}")
+    except Exception as e:
+        logger.error(f"Evaluation failed: {str(e)}")
+    logger.info("Standalone evaluation run completed")

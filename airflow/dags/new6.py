@@ -1,6 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 import sys
 
@@ -107,6 +107,14 @@ train_lstm = PythonOperator(
 metric_and_predict_lstm = PythonOperator(
     task_id='metric_and_predict_lstm',
     python_callable=metric_and_predict_lstm_model,
+    dag=dag_3
+)
+
+metric_and_predict_lstm = PythonOperator(
+    task_id='metric_and_predict_lstm',
+    python_callable=metric_and_predict_lstm_model,
+    op_kwargs={'ti': '{{ ti }}'},  # Explicitly pass task instance
+    provide_context=True,  # Ensure context is provided for XCom
     dag=dag_3
 )
 

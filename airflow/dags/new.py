@@ -25,7 +25,7 @@ from components.btcusdt_ingest_data import crawl_data_from_sources
 from components.datalake_cr import up_to_minio
 from components.duckdb2csv import duckdb_to_csv
 
-from components.utils.lstm_utils import create_sequences
+from components.model.model_utils import create_sequences
 from components.model import build_lstm_model
 
 # ========================================================================== #

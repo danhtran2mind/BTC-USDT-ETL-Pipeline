@@ -13,10 +13,11 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from components.utils.file_utils import load_extract_config, get_parquet_file_names
-from components.utils.lstm_utils import create_data_loader, build_model_from_config
+from components.model.model_utils import build_model_from_config
+from components.model.data_utils import create_data_loader
+from components.utils.utils import parse_timezone
 
 # Configure logging with +07:00 timezone
-tz = timezone(timedelta(hours=7))
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(levelname)s: %(message)s',
@@ -49,11 +50,16 @@ def train_lstm_model(**kwargs) -> Dict:
     out_cfg = cfg['output']
     ver_cfg = cfg['versioning']
 
-    # Generate datetime string with +07:00 timezone
+    # Parse timezone from YAML
+    tz_offset_str = ver_cfg['timezone']  # '+07:00'
+    tz = parse_timezone(tz_offset_str)
+
+    # Get current time in the specified timezone
     dt = datetime.now(tz)
     dt_str = dt.strftime(ver_cfg['datetime_format']) + f"-({dt.strftime('%z')[:3]})"
     model_path = os.path.join(out_cfg['checkpoints']['model_dir'], f"model_{dt_str}.h5")
     scaler_path = os.path.join(out_cfg['checkpoints']['scaler_dir'], f"scaler_{dt_str}.pkl")
+    parquet_folder = load_extract_config('pipeline_config.yml')['paths']['parquet_folder']
 
     # Ensure output directories exist
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
@@ -61,7 +67,7 @@ def train_lstm_model(**kwargs) -> Dict:
 
     # Load data
     file_names = get_parquet_file_names()
-    parquet_paths = [f"temp/extracted_from_minio/{el}" for el in file_names]
+    parquet_paths = [os.path.join(parquet_folder, el) for el in file_names]
     all_df = pd.DataFrame()
     used_files = []
 
@@ -171,8 +177,8 @@ def train_lstm_model(**kwargs) -> Dict:
         'scaler_path': scaler_path,
         'datetime': dt_str,
         'dataset_merge': dataset_merge,
-        'test_rmse': float(test_rmse),
-        'test_mae': float(test_mae)
+        # 'test_rmse': float(test_rmse),
+        # 'test_mae': float(test_mae)
     }
 
 if __name__ == "__main__":

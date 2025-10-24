@@ -26,8 +26,8 @@ data:
 
 output:
   checkpoints:
-    model_dir: models/checkpoints
-    scaler_dir: models/scalers
+    model_dir: ckpts
+    scaler_dir: ckpts
 
   metrics:
     metrics_dir: analytics/metrics
@@ -37,3 +37,4 @@ output:
 
 versioning:
   datetime_format: '%Y-%m-%d-%H-%M-%S'
+  timezone: '+07:00'
