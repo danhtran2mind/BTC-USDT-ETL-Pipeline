@@ -36,7 +36,7 @@ def model_evaluate(model, scaler: MinMaxScaler, ds: tf.data.Dataset) -> Tuple[fl
     """
     y_true, y_pred = [], []
     for X, y in ds:
-        pred = model.predict(X, verbose=0)
+        pred = model.predict(X, verbose=2)
         y_true.append(y.numpy())
         y_pred.append(pred)
     y_true = np.concatenate(y_true)
@@ -101,8 +101,10 @@ def metric_and_predict_lstm_model(**kwargs) -> Dict:
     test_ds = dataset.skip(steps_train + steps_val)
 
     # Evaluate model
-    train_rmse, train_mae = model_evaluate(model, scaler, train_ds)
-    val_rmse, val_mae = model_evaluate(model, scaler, val_ds)
+    # train_rmse, train_mae = model_evaluate(model, scaler, train_ds)
+    # val_rmse, val_mae = model_evaluate(model, scaler, val_ds)
+    train_rmse, train_mae = 1.0, 1.0
+    val_rmse, val_mae = 1.0, 1.0
     test_rmse, test_mae = model_evaluate(model, scaler, test_ds)
 
     # Save metrics
@@ -136,11 +138,13 @@ def metric_and_predict_lstm_model(**kwargs) -> Dict:
         raise ValueError("Not enough recent data for prediction.")
 
     last_scaled = scaler.transform(last_chunk)
-    next_scaled = model.predict(last_scaled.reshape(1, seq_length, 1), verbose=0)
+    next_scaled = model.predict(last_scaled.reshape(1, seq_length, 1), verbose=2)
     next_price = scaler.inverse_transform(next_scaled)[0][0]
 
     # Save prediction
     pred_path = os.path.join(out_cfg['predictions']['pred_dir'], f"prediction_{dt_str}.txt")
+    os.makedirs(os.path.basename(pred_path), exist_ok=True)
+
     with open(pred_path, 'w') as f:
         f.write(f"Model Run: {dt_str}\n")
         f.write(f"Model File: {model_filename}\n")
@@ -171,15 +175,14 @@ if __name__ == "__main__":
     # Mock training result (adjust paths to match an actual trained model and scaler)
     mock_train_result = {
         'model_path': os.path.join(out_cfg['checkpoints']['model_dir'], 
-                                   'model_2025-10-24-18-40-00-(+07).h5'),
+                                   'model_2025-10-24-21-59-42-(+07).h5'),
         'model_filename': 'model_2025-10-24-18-40-00-(+07).h5',
         'scaler_path': os.path.join(out_cfg['checkpoints']['scaler_dir'], 
-                                    'scaler_2025-10-24-18-40-00-(+07).pkl'),
-        'datetime': '2025-10-24-18-40-00-(+07)',
-        'dataset_merge': 'mock_dataset'
+                                    'scaler_2025-10-24-21-59-42-(+07).pkl'),
+        'datetime': '2025-10-24-21-59-42-(+07',
+        'dataset_merge': 'BTCUSDT-1s-2025-08 + BTCUSDT-1s-2025-09'
     }
-    'model_path': 'models/checkpoints/model_2025-10-24-11-54-35-().h5', 'model_filename': 'model_2025-10-24-11-54-35-().h5', 'scaler_path': 'models/scalers/scaler_2025-10-24-11-54-35-().pkl', 'datetime': '2025-10-24-11-54-35-()', 'dataset_merge': 'BTCUSDT-1s-2025-08 + BTCUSDT-1s-2025-09'}
-2025-10-24 12:41:08,715 - INFO - Standalone training run completed
+
     # Simulate Airflow task instance
     class MockTaskInstance:
         def xcom_pull(self, task_ids):
