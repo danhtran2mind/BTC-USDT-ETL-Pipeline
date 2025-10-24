@@ -12,7 +12,7 @@ from typing import Dict, List
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-from components.utils.file_utils import load_config, get_parquet_file_names
+from components.utils.file_utils import load_extract_config, get_parquet_file_names
 from components.utils.lstm_utils import create_data_loader, build_model_from_config
 
 # Configure logging with +07:00 timezone
@@ -42,7 +42,7 @@ def train_lstm_model(**kwargs) -> Dict:
         for gpu in gpus:
             tf.config.experimental.set_memory_growth(gpu, True)
 
-    cfg = load_config('model_config.yml')
+    cfg = load_extract_config('model_config.yml')
     model_cfg = cfg['model']
     train_cfg = cfg['training']
     data_cfg = cfg['data']

@@ -7,8 +7,10 @@ import pickle
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from typing import Dict, List, Tuple
 import tensorflow as tf
+import sys
 
-from components.utils.file_utils import load_config, get_parquet_file_names
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from components.utils.file_utils import load_extract_config, get_parquet_file_names
 from components.utils.lstm_utils import create_data_loader, build_model_from_config
 
 def model_evaluate(model, scaler: MinMaxScaler, ds: tf.data.Dataset) -> Tuple[float, float]:
@@ -47,8 +49,8 @@ def metric_and_predict_lstm_model(**kwargs) -> Dict:
     if not train_result:
         raise ValueError("No training result.")
 
-    cfg = load_config('model_config.yml')
-    parquet_folder = load_config('pipeline_config.yml')['paths']['parquet_folder']
+    cfg = load_extract_config('model_config.yml')
+    parquet_folder = load_extract_config('pipeline_config.yml')['paths']['parquet_folder']
     os.makedirs(parquet_folder, exist_ok=True)
 
     model_cfg = cfg['model']

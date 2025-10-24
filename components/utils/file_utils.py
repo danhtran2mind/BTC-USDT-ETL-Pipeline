@@ -6,7 +6,7 @@ from typing import Dict, List
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def load_config(config_name: str) -> Dict:
+def load_extract_config(config_name: str) -> Dict:
     """Load a YAML configuration file from the configs directory.
 
     Args:
@@ -70,7 +70,7 @@ def load_pipeline_config() -> Dict:
     Raises:
         FileNotFoundError: If pipeline_config.yml is missing.
     """
-    config = load_config('pipeline_config.yml')
+    config = load_extract_config('pipeline_config.yml')
     logging.debug(f"Pipeline config loaded: {config}")
     return config
 
