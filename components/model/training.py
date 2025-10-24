@@ -54,7 +54,10 @@ def train_lstm_model(**kwargs) -> Dict:
     dt_str = dt.strftime(ver_cfg['datetime_format']) + f"-({dt.strftime('%z')[:3]})"
     model_path = os.path.join(out_cfg['checkpoints']['model_dir'], f"model_{dt_str}.h5")
     scaler_path = os.path.join(out_cfg['checkpoints']['scaler_dir'], f"scaler_{dt_str}.pkl")
+
+    # Ensure output directories exist
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    os.makedirs(os.path.dirname(scaler_path), exist_ok=True)
 
     # Load data
     file_names = get_parquet_file_names()
@@ -143,23 +146,24 @@ def train_lstm_model(**kwargs) -> Dict:
     )
 
     # Save scaler
+
     with open(scaler_path, 'wb') as f:
         pickle.dump(scaler, f)
 
-    # Test evaluation
-    y_true, y_pred = [], []
-    for X, y in test_ds:
-        pred = model.predict(X, verbose=0)
-        y_true.append(y.numpy())
-        y_pred.append(pred)
-    y_true = np.concatenate(y_true)
-    y_pred = np.concatenate(y_pred)
-    y_true_orig = scaler.inverse_transform(y_true)
-    y_pred_orig = scaler.inverse_transform(y_pred)
-    test_rmse = np.sqrt(mean_squared_error(y_true_orig, y_pred_orig))
-    test_mae = mean_absolute_error(y_true_orig, y_pred_orig)
+    # # Test evaluation
+    # y_true, y_pred = [], []
+    # for X, y in test_ds:
+    #     pred = model.predict(X, verbose=0)
+    #     y_true.append(y.numpy())
+    #     y_pred.append(pred)
+    # y_true = np.concatenate(y_true)
+    # y_pred = np.concatenate(y_pred)
+    # y_true_orig = scaler.inverse_transform(y_true)
+    # y_pred_orig = scaler.inverse_transform(y_pred)
+    # test_rmse = np.sqrt(mean_squared_error(y_true_orig, y_pred_orig))
+    # test_mae = mean_absolute_error(y_true_orig, y_pred_orig)
 
-    logger.info(f"Test RMSE: {test_rmse:.4f}, MAE: {test_mae:.4f}")
+    # logger.info(f"Test RMSE: {test_rmse:.4f}, MAE: {test_mae:.4f}")
 
     return {
         'model_path': model_path,

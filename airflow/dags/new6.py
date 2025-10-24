@@ -71,7 +71,7 @@ extract_data = PythonOperator(
     python_callable=extract_from_minio,
     op_kwargs={
         'bucket_name': pipeline_config['minio']['bucket_name'],
-        'file_names': load_extract_config("extract_data.yml")[0]
+        'file_names': load_extract_config("extract_data.yml")["files"]
     },
     dag=dag_2
 )

@@ -51,7 +51,7 @@ def get_parquet_file_names() -> List[str]:
         FileNotFoundError: If extract_data.yml is missing.
         ValueError: If no files are specified in the configuration.
     """
-    config = load_config('extract_data.yml')
+    config = load_extract_config('extract_data.yml')
     files = config.get('files', [])
     if not files:
         logging.error("No files specified in extract_data.yml")
