@@ -152,7 +152,6 @@ def train_lstm_model(**kwargs) -> Dict:
     )
 
     # Save scaler
-
     with open(scaler_path, 'wb') as f:
         pickle.dump(scaler, f)
 

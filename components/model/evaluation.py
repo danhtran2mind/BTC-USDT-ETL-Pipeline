@@ -55,11 +55,12 @@ def metric_and_predict_lstm_model(**kwargs) -> Dict:
         Dict: Evaluation metrics and prediction metadata.
     """
     # Use `ti` from context (provided by provide_context=True) instead of op_kwargs['ti']
-    ti = kwargs.get('ti')  # Get task instance from context
+    ti = kwargs.get('context', {}).get('ti')
     if not ti:
-        raise ValueError("Task instance not found in context.")
+        raise ValueError("Task instance not found in context. Ensure provide_context=True is set in the PythonOperator.")
 
     train_result = ti.xcom_pull(task_ids='train_lstm_model')
+    
     if not train_result:
         raise ValueError("No training result.")
 
