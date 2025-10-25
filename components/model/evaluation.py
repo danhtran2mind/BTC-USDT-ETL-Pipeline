@@ -57,10 +57,11 @@ def metric_and_predict_lstm_model(train_result: Dict) -> Dict:
     # Access ti directly from kwargs
     if not train_result:
         raise ValueError("No training result provided.")
-    
-    if not train_result:
-        raise ValueError("No training result.")
-
+    print("=" * 20)
+    print(type(train_result))
+    print("=" * 20)
+    print(dict(train_result))
+    print("=" * 20)
     cfg = load_extract_config('model_config.yml')
     parquet_folder = load_extract_config('pipeline_config.yml')['paths']['parquet_folder']
     os.makedirs(parquet_folder, exist_ok=True)
