@@ -4,8 +4,8 @@
 
 model:
   architecture: bilstm        # lstm | bilstm | gru | custom
-  units: 1 #100
-  layers: 1 #2
+  units: 100 #100
+  layers: 3 #2
   dropout: 0.2
   activation: tanh
   optimizer: adam
