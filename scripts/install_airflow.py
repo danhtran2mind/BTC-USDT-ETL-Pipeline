@@ -26,10 +26,7 @@ os.makedirs(LOG_DIR, exist_ok=True)          # ensure logs folder exists
 # Get Python version
 python_version = ".".join(str(el) for el in list(sys.version_info[:2]))
 # Install Airflow
-run(
-    'pip install "apache-airflow[async,celery,postgres,cncf.kubernetes]" '
-    f'--constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.3/constraints-{python_version}.txt"'
-)
+run('pip install apache-airflow==2.10.3')
 
 run("airflow db init")
 run(

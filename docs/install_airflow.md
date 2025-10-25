@@ -19,18 +19,11 @@ Before proceeding, ensure you have the following:
 ## Installation Steps
 
 ### 1. Install Apache Airflow
-Install Airflow with the required extras for async, Celery, PostgreSQL, and Kubernetes support. The `--constraint` flag ensures compatibility with Python 3.12 by using the official Airflow constraint file for version 2.10.3.
+Install Airflow for version 2.10.3.
 
 ```bash
-pip install "apache-airflow[async,celery,postgres,cncf.kubernetes]" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.3/constraints-3.12.txt"
+pip install apache-airflow==2.10.3
 ```
-
-This command installs:
-- **apache-airflow**: The core Airflow package.
-- **async**: Support for asynchronous task execution.
-- **celery**: Support for Celery as a distributed task queue.
-- **postgres**: PostgreSQL database connector for the metadata database.
-- **cncf.kubernetes**: Kubernetes executor for running tasks in a Kubernetes cluster.
 
 ### 2. Set Up the Airflow Home Directory
 Airflow requires a home directory to store its configuration, logs, and DAGs. The following Python script sets the `AIRFLOW_HOME` environment variable and creates the directory if it doesn't exist.
