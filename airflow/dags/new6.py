@@ -104,12 +104,12 @@ train_lstm = PythonOperator(
     dag=dag_3
 )
 
-metric_and_predict_lstm = PythonOperator(
-    task_id='metric_and_predict_lstm',
-    python_callable=metric_and_predict_lstm_model,
-    provide_context=True,
-    dag=dag_3
-)
+# metric_and_predict_lstm = PythonOperator(
+#     task_id='metric_and_predict_lstm',
+#     python_callable=metric_and_predict_lstm_model,
+#     provide_context=True,
+#     dag=dag_3
+# )
 
 metric_and_predict_lstm = PythonOperator(
     task_id='metric_and_predict_lstm',
