@@ -24,6 +24,29 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# def model_evaluate(model, scaler: MinMaxScaler, ds: tf.data.Dataset) -> Tuple[float, float]:
+#     """Evaluate a model on a dataset and return RMSE and MAE.
+
+#     Args:
+#         model: Trained Keras model.
+#         scaler (MinMaxScaler): Scaler used for data normalization.
+#         ds (tf.data.Dataset): Dataset to evaluate on.
+
+#     Returns:
+#         Tuple[float, float]: RMSE and MAE metrics.
+#     """
+#     y_true, y_pred = [], []
+#     for X, y in ds:
+#         pred = model.predict(X, verbose=1)
+#         y_true.append(y.numpy())
+#         y_pred.append(pred)
+#     y_true = np.concatenate(y_true)
+#     y_pred = np.concatenate(y_pred)
+#     y_true_orig = scaler.inverse_transform(y_true)
+#     y_pred_orig = scaler.inverse_transform(y_pred)
+#     return (np.sqrt(mean_squared_error(y_true_orig, y_pred_orig)), 
+#             mean_absolute_error(y_true_orig, y_pred_orig))
+
 def model_evaluate(model, scaler: MinMaxScaler, ds: tf.data.Dataset) -> Tuple[float, float]:
     """Evaluate a model on a dataset and return RMSE and MAE.
 
@@ -35,16 +58,22 @@ def model_evaluate(model, scaler: MinMaxScaler, ds: tf.data.Dataset) -> Tuple[fl
     Returns:
         Tuple[float, float]: RMSE and MAE metrics.
     """
-    y_true, y_pred = [], []
-    for X, y in ds:
-        pred = model.predict(X, verbose=1)
+    # Collect true labels (y) from dataset
+    y_true = []
+    for _, y in ds:
         y_true.append(y.numpy())
-        y_pred.append(pred)
     y_true = np.concatenate(y_true)
-    y_pred = np.concatenate(y_pred)
+
+    # Predict the entire dataset
+    y_pred = model.predict(ds, verbose=0)  # Silent predictions
+
+    # Inverse transform to original scale
     y_true_orig = scaler.inverse_transform(y_true)
     y_pred_orig = scaler.inverse_transform(y_pred)
-    return np.sqrt(mean_squared_error(y_true_orig, y_pred_orig)), mean_absolute_error(y_true_orig, y_pred_orig)
+
+    # Calculate metrics
+    return (np.sqrt(mean_squared_error(y_true_orig, y_pred_orig)), 
+            mean_absolute_error(y_true_orig, y_pred_orig))
 
 def metric_and_predict_lstm_model(train_result: Dict) -> Dict:
     """Evaluate the trained LSTM model and predict the next price.
