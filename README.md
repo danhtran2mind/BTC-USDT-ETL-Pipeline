@@ -50,7 +50,7 @@ pip install -r requirements.txt
 Execute the provided script to install MinIO:
 
 ```bash
-python scripts/install_mino.py
+python scripts/install_minio.py
 ```
 
 For additional configuration options, refer to [MinIO Server Installation](docs/install_minio_server.md).
@@ -192,7 +192,7 @@ pip install -r requirements.txt
 Execute the provided script to install MinIO:
 
 ```bash
-python scripts/install_mino.py
+python scripts/install_minio.py
 ```
 
 For additional configuration options, refer to [MinIO Server Installation](docs/install_minio_server.md).
