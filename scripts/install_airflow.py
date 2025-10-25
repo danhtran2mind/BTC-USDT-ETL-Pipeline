@@ -1,4 +1,5 @@
 import os
+import sys
 import subprocess
 import time
 
@@ -22,10 +23,12 @@ os.environ["AIRFLOW_HOME"] = AIRFLOW_HOME
 os.makedirs(AIRFLOW_HOME, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)          # ensure logs folder exists
 
+# Get Python version
+python_version = ".".join(str(el) for el in list(sys.version_info[:2]))
 # Install Airflow
 run(
     'pip install "apache-airflow[async,celery,postgres,cncf.kubernetes]" '
-    '--constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.9.3/constraints-3.12.txt"'
+    f'--constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.9.3/constraints-{python_version}.txt"'
 )
 
 run("airflow db init")

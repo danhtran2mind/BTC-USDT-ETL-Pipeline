@@ -148,7 +148,7 @@ def train_lstm_model(**kwargs) -> Dict:
         validation_data=val_ds,
         validation_steps=steps_val,
         callbacks=[checkpoint_cb, early_stop],
-        verbose=2
+        verbose=1
     )
 
     # Save scaler

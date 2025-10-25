@@ -36,7 +36,7 @@ def model_evaluate(model, scaler: MinMaxScaler, ds: tf.data.Dataset) -> Tuple[fl
     """
     y_true, y_pred = [], []
     for X, y in ds:
-        pred = model.predict(X, verbose=2)
+        pred = model.predict(X, verbose=1)
         y_true.append(y.numpy())
         y_pred.append(pred)
     y_true = np.concatenate(y_true)
@@ -138,7 +138,7 @@ def metric_and_predict_lstm_model(**kwargs) -> Dict:
         raise ValueError("Not enough recent data for prediction.")
 
     last_scaled = scaler.transform(last_chunk)
-    next_scaled = model.predict(last_scaled.reshape(1, seq_length, 1), verbose=2)
+    next_scaled = model.predict(last_scaled.reshape(1, seq_length, 1), verbose=1)
     next_price = scaler.inverse_transform(next_scaled)[0][0]
 
     # Save prediction
