@@ -4,7 +4,7 @@ This guide provides detailed instructions for installing and configuring Apache 
 
 ## Prerequisites
 Before proceeding, ensure you have the following:
-- **Python 3.12**: Airflow 2.9.3 is compatible with Python 3.12, as specified in the constraint file.
+- **Python 3.12**: Airflow 2.10.3 is compatible with Python 3.12, as specified in the constraint file.
 - **pip**: The Python package manager to install Airflow and its dependencies.
 - **PostgreSQL**: If using PostgreSQL as the metadata database (recommended for production).
 - **Celery**: For distributed task execution (optional, included in the installation).
@@ -19,10 +19,10 @@ Before proceeding, ensure you have the following:
 ## Installation Steps
 
 ### 1. Install Apache Airflow
-Install Airflow with the required extras for async, Celery, PostgreSQL, and Kubernetes support. The `--constraint` flag ensures compatibility with Python 3.12 by using the official Airflow constraint file for version 2.9.3.
+Install Airflow with the required extras for async, Celery, PostgreSQL, and Kubernetes support. The `--constraint` flag ensures compatibility with Python 3.12 by using the official Airflow constraint file for version 2.10.3.
 
 ```bash
-pip install "apache-airflow[async,celery,postgres,cncf.kubernetes]" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.9.3/constraints-3.12.txt"
+pip install "apache-airflow[async,celery,postgres,cncf.kubernetes]" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.3/constraints-3.12.txt"
 ```
 
 This command installs:
