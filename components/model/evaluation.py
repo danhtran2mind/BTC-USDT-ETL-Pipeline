@@ -175,7 +175,7 @@ def metric_and_predict_lstm_model(train_result: Dict) -> Dict:
 
     # Save prediction
     pred_path = os.path.join(out_cfg['predictions']['pred_dir'], f"prediction_{dt_str}.txt")
-    os.makedirs(os.path.basename(pred_path), exist_ok=True)
+    os.makedirs(os.path.dirname(pred_path), exist_ok=True)
 
     with open(pred_path, 'w') as f:
         f.write(f"Model Run: {dt_str}\n")
