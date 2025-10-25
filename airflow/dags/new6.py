@@ -111,6 +111,16 @@ metric_and_predict_lstm = PythonOperator(
     dag=dag_3
 )
 
+metric_and_predict_lstm = PythonOperator(
+    task_id='metric_and_predict_lstm',
+    python_callable=metric_and_predict_lstm_model,
+    op_kwargs={
+        'train_result': '{{ ti.xcom_pull(task_ids="train_lstm_model") }}'
+    },
+    provide_context=True,  # Still needed for Jinja templating in op_kwargs
+    dag=dag_3
+)
+
 # metric_and_predict_lstm = PythonOperator(
 #     task_id='metric_and_predict_lstm',
 #     python_callable=metric_and_predict_lstm_model,

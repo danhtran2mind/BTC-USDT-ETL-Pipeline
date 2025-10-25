@@ -45,21 +45,18 @@ def model_evaluate(model, scaler: MinMaxScaler, ds: tf.data.Dataset) -> Tuple[fl
     y_pred_orig = scaler.inverse_transform(y_pred)
     return np.sqrt(mean_squared_error(y_true_orig, y_pred_orig)), mean_absolute_error(y_true_orig, y_pred_orig)
 
-def metric_and_predict_lstm_model(**kwargs) -> Dict:
+def metric_and_predict_lstm_model(train_result: Dict) -> Dict:
     """Evaluate the trained LSTM model and predict the next price.
 
     Args:
-        kwargs: Airflow task instance arguments.
+        train_result (Dict): Training result dictionary from train_lstm_model task.
 
     Returns:
         Dict: Evaluation metrics and prediction metadata.
     """
-    # Use `ti` from context (provided by provide_context=True) instead of op_kwargs['ti']
-    ti = kwargs.get('context', {}).get('ti')
-    if not ti:
-        raise ValueError("Task instance not found in context. Ensure provide_context=True is set in the PythonOperator.")
-
-    train_result = ti.xcom_pull(task_ids='train_lstm_model')
+    # Access ti directly from kwargs
+    if not train_result:
+        raise ValueError("No training result provided.")
     
     if not train_result:
         raise ValueError("No training result.")
