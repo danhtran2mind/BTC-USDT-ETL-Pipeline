@@ -104,19 +104,20 @@ train_lstm = PythonOperator(
     dag=dag_3
 )
 
-# metric_and_predict_lstm = PythonOperator(
-#     task_id='metric_and_predict_lstm',
-#     python_callable=metric_and_predict_lstm_model,
-#     dag=dag_3
-# )
-
 metric_and_predict_lstm = PythonOperator(
     task_id='metric_and_predict_lstm',
     python_callable=metric_and_predict_lstm_model,
-    op_kwargs={'ti': '{{ ti }}'},  # Explicitly pass task instance
-    provide_context=True,  # Ensure context is provided for XCom
+    provide_context=True,
     dag=dag_3
 )
+
+# metric_and_predict_lstm = PythonOperator(
+#     task_id='metric_and_predict_lstm',
+#     python_callable=metric_and_predict_lstm_model,
+#     op_kwargs={'ti': '{{ ti }}'},  # Explicitly pass task instance
+#     provide_context=True,  # Ensure context is provided for XCom
+#     dag=dag_3
+# )
 
 # DAG 4: DuckDB to CSV
 export_duckdb_to_csv = PythonOperator(
